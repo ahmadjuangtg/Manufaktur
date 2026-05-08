@@ -1,0 +1,71 @@
+@extends('layouts.app', ['title' => 'Stock Card List'])
+
+@section('content')
+<div class="space-y-6">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h3 class="text-xl font-bold text-white uppercase tracking-tight">Kartu Stok (Stock Card)</h3>
+            <p class="text-slate-400 text-sm italic">Lacak riwayat masuk dan keluar barang secara mendetail</p>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="glass-card p-6 rounded-3xl border border-white/5 bg-slate-800/20 mb-8">
+        <form action="{{ route('stock_card.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center">
+            <div class="relative flex-1 w-full">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                <input type="text" name="search" value="{{ $search }}" placeholder="Cari SKU atau Nama Produk..." class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-3.5 pl-12 pr-6 text-white text-sm font-bold outline-none focus:border-indigo-500 transition-all shadow-inner">
+            </div>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 w-full md:w-auto">
+                Cari Produk
+            </button>
+            @if($search)
+                <a href="{{ route('stock_card.index') }}" class="text-slate-500 hover:text-white text-sm font-bold px-4">Reset</a>
+            @endif
+        </form>
+    </div>
+
+    <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-slate-900/20">
+        <div class="p-8 border-b border-white/5 bg-slate-800/30">
+            <h4 class="text-[12px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
+                <span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                Daftar Stok Produk
+            </h4>
+        </div>
+        <table class="w-full text-left">
+            <thead>
+                <tr class="bg-slate-800/50 text-slate-400 text-[11px] font-black uppercase tracking-[0.3em] border-b border-white/5">
+                    <th class="px-8 py-5">SKU</th>
+                    <th class="px-8 py-5">Nama Produk</th>
+                    <th class="px-8 py-5">Kategori</th>
+                    <th class="px-8 py-5 text-center">Stok Saat Ini</th>
+                    <th class="px-8 py-5 text-center">Satuan</th>
+                    <th class="px-8 py-5 text-right">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5">
+                @forelse($items as $i)
+                <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-8 py-5 text-[12px] text-slate-500 font-bold uppercase tracking-widest">{{ $i->code }}</td>
+                    <td class="px-8 py-5 font-bold text-white text-sm">{{ $i->name }}</td>
+                    <td class="px-8 py-5">
+                        <span class="text-[11px] font-black bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-white/5 uppercase tracking-tighter">{{ $i->category->name ?? '-' }}</span>
+                    </td>
+                    <td class="px-8 py-5 text-center font-black text-lg {{ $i->current_stock > 0 ? 'text-emerald-500' : ($i->current_stock < 0 ? 'text-rose-500' : 'text-slate-600') }}">
+                        {{ number_format($i->current_stock) }}
+                    </td>
+                    <td class="px-8 py-5 text-center text-slate-500 text-sm font-bold uppercase">{{ $i->unit->name ?? '-' }}</td>
+                    <td class="px-8 py-5 text-right">
+                        <a href="{{ route('stock_card.index', ['item_id' => $i->id]) }}" class="inline-flex items-center gap-2 bg-indigo-500/10 hover:bg-indigo-600 text-indigo-400 hover:text-white px-4 py-2 rounded-xl text-[12px] font-black uppercase tracking-widest transition-all">
+                            <i data-lucide="search" class="w-3.5 h-3.5"></i> Detail History
+                        </a>
+                    </td>
+                </tr>
+                @empty
+                <tr><td colspan="6" class="px-8 py-20 text-center text-slate-500 italic">Produk tidak ditemukan.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+@endsection
