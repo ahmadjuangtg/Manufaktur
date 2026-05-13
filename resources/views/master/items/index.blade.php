@@ -98,22 +98,22 @@
 
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/80 backdrop-blur-md p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-7xl rounded-[2rem] flex flex-col max-h-[95vh] overflow-hidden shadow-2xl">
-        <div class="px-8 py-5 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
-                    <i data-lucide="package" class="w-6 h-6"></i>
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-[90vw] rounded-[2.5rem] flex flex-col max-h-[95vh] overflow-hidden shadow-2xl">
+        <div class="px-10 py-6 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
+            <div class="flex items-center gap-5">
+                <div class="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
+                    <i data-lucide="package" class="w-7 h-7"></i>
                 </div>
                 <div>
-                    <h3 id="modalTitle" class="text-xl font-black text-white tracking-tight uppercase">Product SKU Entry</h3>
-                    <p class="text-[12px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Master Item Terminal</p>
+                    <h3 id="modalTitle" class="text-2xl font-black text-white tracking-tight uppercase">Product SKU Entry</h3>
+                    <p class="text-[13px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Master Item Terminal</p>
                 </div>
             </div>
-            <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+            <button onclick="closeModal()" class="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-all"><i data-lucide="x" class="w-7 h-7"></i></button>
         </div>
         
-        <div class="flex-1 overflow-y-auto px-10 py-6 modal-scroll bg-[#0f172a]/20">
-            <form id="itemForm" action="{{ route('items.store') }}" method="POST" class="space-y-8" onsubmit="return handleFormSubmit(this)">
+        <div class="flex-1 overflow-y-auto px-12 py-6 modal-scroll bg-[#0f172a]/20">
+            <form id="itemForm" action="{{ route('items.store') }}" method="POST" class="space-y-6" onsubmit="return handleFormSubmit(this)">
                 @csrf
                 <input type="hidden" id="item_id" name="item_id">
                 
@@ -121,37 +121,37 @@
                     <!-- Column 1: Identity -->
                     <div class="space-y-4">
                         <div class="flex items-center gap-3 border-b border-white/5 pb-2">
-                            <div class="w-8 h-8 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
-                                <i data-lucide="tag" class="w-4 h-4"></i>
+                            <div class="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
+                                <i data-lucide="tag" class="w-5 h-5"></i>
                             </div>
-                            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Identity</h4>
+                            <h4 class="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Product Identity</h4>
                         </div>
                         
-                        <div class="space-y-4">
+                        <div class="space-y-5">
                             <div class="space-y-2">
-                                <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Full Product Name*</label>
-                                <input type="text" id="name" name="name" placeholder="Enter product name..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-indigo-500 outline-none text-white font-bold text-sm transition-all" required>
+                                <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Full Product Name*</label>
+                                <input type="text" id="name" name="name" placeholder="Enter product name..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-indigo-500 outline-none text-white font-bold text-base transition-all" required>
                             </div>
                             
                             <div class="space-y-2">
-                                <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Barcode Identity*</label>
+                                <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Barcode Identity*</label>
                                 <div class="relative">
-                                    <input type="text" id="barcode" name="barcode" placeholder="Scan or enter barcode..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-indigo-500 outline-none text-white font-mono tracking-widest text-sm" required>
-                                    <i data-lucide="barcode" class="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600"></i>
+                                    <input type="text" id="barcode" name="barcode" placeholder="Scan or enter barcode..." class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-indigo-500 outline-none text-white font-mono tracking-widest text-base" required>
+                                    <i data-lucide="barcode" class="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-600"></i>
                                 </div>
                             </div>
  
-                            <div class="grid grid-cols-2 gap-4">
+                            <div class="grid grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Brand Manufacturer*</label>
-                                    <select id="manufacturer_id" name="manufacturer_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-indigo-500 outline-none text-white font-bold text-sm" required>
+                                    <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Brand Manufacturer*</label>
+                                    <select id="manufacturer_id" name="manufacturer_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-indigo-500 outline-none text-white font-bold text-base" required>
                                         <option value="">Select Manufacturer</option>
                                         @foreach($manufacturers as $m) <option value="{{ $m->id }}">{{ $m->name }}</option> @endforeach
                                     </select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Product Type*</label>
-                                    <select id="type_id" name="type_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-indigo-500 outline-none text-white font-bold text-sm" required>
+                                    <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Product Type*</label>
+                                    <select id="type_id" name="type_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-indigo-500 outline-none text-white font-bold text-base" required>
                                         <option value="">Select Type</option>
                                         @foreach($types as $t) <option value="{{ $t->id }}">{{ $t->name }}</option> @endforeach
                                     </select>
@@ -163,40 +163,40 @@
                     <!-- Column 2: Classification & Logistics -->
                     <div class="space-y-4">
                         <div class="flex items-center gap-3 border-b border-white/5 pb-2">
-                            <div class="w-8 h-8 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
-                                <i data-lucide="box" class="w-4 h-4"></i>
+                            <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                                <i data-lucide="box" class="w-5 h-5"></i>
                             </div>
-                            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Logistics & Packaging</h4>
+                            <h4 class="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">Logistics & Packaging</h4>
                         </div>
-
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
+ 
+                        <div class="space-y-5">
+                            <div class="grid grid-cols-2 gap-6">
                                 <div class="space-y-2">
-                                    <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Category*</label>
-                                    <select id="category_id" name="category_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-emerald-500 outline-none text-white font-bold text-sm" required>
+                                    <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Category*</label>
+                                    <select id="category_id" name="category_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-emerald-500 outline-none text-white font-bold text-base" required>
                                         <option value="">Select Category</option>
                                         @foreach($categories as $c) <option value="{{ $c->id }}">{{ $c->name }}</option> @endforeach
                                     </select>
                                 </div>
                                 <div class="space-y-2">
-                                    <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Base Unit*</label>
-                                    <select id="unit_id" name="unit_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-2.5 px-5 focus:border-emerald-500 outline-none text-white font-bold text-sm" required>
+                                    <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Base Unit*</label>
+                                    <select id="unit_id" name="unit_id" class="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-3.5 px-6 focus:border-emerald-500 outline-none text-white font-bold text-base" required>
                                         <option value="">Select Unit</option>
                                         @foreach($units as $u) <option value="{{ $u->id }}">{{ $u->name }}</option> @endforeach
                                     </select>
                                 </div>
                             </div>
-
-                            <div class="p-5 bg-slate-950/40 rounded-3xl border border-white/5 space-y-4">
-                                <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Packaging Standard</label>
-                                <div class="grid grid-cols-2 gap-4">
+ 
+                            <div class="p-6 bg-slate-950/40 rounded-[2rem] border border-white/5 space-y-5">
+                                <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Packaging Standard</label>
+                                <div class="grid grid-cols-2 gap-6">
                                     <div class="space-y-2">
-                                        <span class="text-[8px] font-bold text-slate-600 uppercase ml-1">Qty per Pack</span>
-                                        <input type="number" step="0.01" id="package_qty" name="package_qty" placeholder="Ex: 25.00" class="w-full bg-slate-950 border border-white/5 rounded-xl py-2 px-4 text-white font-black text-sm focus:border-emerald-500 outline-none transition-all">
+                                        <span class="text-[10px] font-bold text-slate-600 uppercase ml-1">Qty per Pack</span>
+                                        <input type="number" step="0.01" id="package_qty" name="package_qty" placeholder="Ex: 25.00" class="w-full bg-slate-950 border border-white/5 rounded-xl py-3 px-5 text-white font-black text-base focus:border-emerald-500 outline-none transition-all">
                                     </div>
                                     <div class="space-y-2">
-                                        <span class="text-[8px] font-bold text-slate-600 uppercase ml-1">Pack Type</span>
-                                        <select id="package_type" name="package_type" class="w-full bg-slate-950 border border-white/5 rounded-xl py-2 px-4 text-white font-bold text-sm focus:border-emerald-500 outline-none transition-all">
+                                        <span class="text-[10px] font-bold text-slate-600 uppercase ml-1">Pack Type</span>
+                                        <select id="package_type" name="package_type" class="w-full bg-slate-950 border border-white/5 rounded-xl py-3 px-5 text-white font-bold text-base focus:border-emerald-500 outline-none transition-all">
                                             <option value="">Type</option>
                                             <option value="Bag">Bag</option>
                                             <option value="Box">Box</option>
@@ -209,23 +209,23 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="text-[8px] text-slate-600 italic px-1 font-medium">Format: [Qty] [Unit] / [Type] (e.g. 25 Kg / Bag)</div>
+                                <div class="text-[10px] text-slate-600 italic px-1 font-medium">Format: [Qty] [Unit] / [Type] (e.g. 25 Kg / Bag)</div>
                             </div>
-
+ 
                             <div class="space-y-2">
-                                <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensions (cm)</label>
-                                <div class="grid grid-cols-3 gap-4">
+                                <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Dimensions (cm)</label>
+                                <div class="grid grid-cols-3 gap-6">
                                     <div class="relative group">
-                                        <input type="number" step="0.01" id="length" name="length" placeholder="L" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-2 px-4 text-center text-white font-black text-sm focus:border-indigo-500 transition-all">
-                                        <span class="absolute -top-2 left-3 px-1 bg-[#1e293b] text-[7px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Length</span>
+                                        <input type="number" step="0.01" id="length" name="length" placeholder="L" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-5 text-center text-white font-black text-base focus:border-indigo-500 transition-all">
+                                        <span class="absolute -top-2 left-4 px-1 bg-[#1e293b] text-[9px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Length</span>
                                     </div>
                                     <div class="relative group">
-                                        <input type="number" step="0.01" id="width" name="width" placeholder="W" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-2 px-4 text-center text-white font-black text-sm focus:border-indigo-500 transition-all">
-                                        <span class="absolute -top-2 left-3 px-1 bg-[#1e293b] text-[7px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Width</span>
+                                        <input type="number" step="0.01" id="width" name="width" placeholder="W" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-5 text-center text-white font-black text-base focus:border-indigo-500 transition-all">
+                                        <span class="absolute -top-2 left-4 px-1 bg-[#1e293b] text-[9px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Width</span>
                                     </div>
                                     <div class="relative group">
-                                        <input type="number" step="0.01" id="height" name="height" placeholder="H" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-2 px-4 text-center text-white font-black text-sm focus:border-indigo-500 transition-all">
-                                        <span class="absolute -top-2 left-3 px-1 bg-[#1e293b] text-[7px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Height</span>
+                                        <input type="number" step="0.01" id="height" name="height" placeholder="H" class="w-full bg-slate-900/50 border border-white/5 rounded-xl py-3 px-5 text-center text-white font-black text-base focus:border-indigo-500 transition-all">
+                                        <span class="absolute -top-2 left-4 px-1 bg-[#1e293b] text-[9px] text-slate-500 group-focus-within:text-indigo-400 transition-colors">Height</span>
                                     </div>
                                 </div>
                             </div>

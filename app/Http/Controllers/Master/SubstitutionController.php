@@ -14,6 +14,7 @@ class SubstitutionController extends Controller
     {
         $machines = Machine::where('is_active', true)->orderBy('name')->get();
         $items = Item::with('unit')->orderBy('name')->get();
+        $units = DB::table('units')->orderBy('name')->get();
         
         // Fetch all substitutions and capabilities
         $machineSubstitutions = DB::table('machine_substitutions')
@@ -34,10 +35,11 @@ class SubstitutionController extends Controller
             ->join('machines', 'machine_capabilities.machine_id', '=', 'machines.id')
             ->join('items', 'machine_capabilities.item_id', '=', 'items.id')
             ->select('machine_capabilities.*', 'machines.name as machine_name', 'items.name as item_name')
+            ->orderBy('machines.name')
             ->get();
 
         return view('master.substitutions.index', compact(
-            'machines', 'items', 'machineSubstitutions', 'itemSubstitutions', 'capabilities'
+            'machines', 'items', 'machineSubstitutions', 'itemSubstitutions', 'capabilities', 'units'
         ));
     }
 
@@ -81,7 +83,18 @@ class SubstitutionController extends Controller
 
         DB::table('machine_capabilities')->updateOrInsert(
             ['machine_id' => $request->machine_id, 'item_id' => $request->item_id],
-            ['is_default' => $request->has('is_default'), 'production_rate' => $request->production_rate, 'updated_at' => now(), 'created_at' => now()]
+            [
+                'is_default' => $request->has('is_default'), 
+                'production_rate' => $request->production_rate,
+                'output_unit' => $request->output_unit,
+                'capacity_unit' => $request->capacity_unit ?? 'perjam',
+                'thickness' => $request->thickness,
+                'diameter' => $request->diameter,
+                'cavity' => $request->cavity,
+                'cycle' => $request->cycle,
+                'updated_at' => now(), 
+                'created_at' => now()
+            ]
         );
 
         return back()->with('success', 'Kapabilitas mesin berhasil ditambahkan');

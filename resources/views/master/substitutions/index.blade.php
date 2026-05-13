@@ -269,11 +269,51 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Laju Produksi (Opsional)</label>
-                        <div class="flex items-center gap-3 bg-slate-900 border border-white/5 rounded-2xl px-5 py-4">
-                            <input type="number" step="0.01" name="production_rate" class="w-full bg-transparent border-none text-sm text-white outline-none" placeholder="0.00">
-                            <span class="text-[12px] text-amber-400 font-black">UNIT/HR</span>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Laju Produksi (Qty)</label>
+                            <input type="number" step="0.01" name="production_rate" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all" placeholder="0.00">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Satuan (Output)</label>
+                            <select name="output_unit" required class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all">
+                                <option value="">Pilih Satuan</option>
+                                @foreach($units as $u)
+                                    <option value="{{ $u->name }}">{{ $u->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Interval Waktu</label>
+                            <select name="capacity_unit" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all">
+                                <option value="perjam">Per Jam</option>
+                                <option value="perhari">Per Hari</option>
+                                <option value="perminggu">Per Minggu</option>
+                                <option value="perbulan">Per Bulan</option>
+                                <option value="pertahun">Per Tahun</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Ketebalan / Micron</label>
+                            <input type="text" name="thickness" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all" placeholder="Contoh: 80-85">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Diameter (mm)</label>
+                            <input type="text" name="diameter" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all" placeholder="Contoh: 91">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Cavity</label>
+                            <input type="number" name="cavity" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all" placeholder="0">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Cycle</label>
+                            <input type="number" step="0.01" name="cycle" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-amber-500/20 transition-all" placeholder="0.00">
                         </div>
                     </div>
                     <div class="flex items-center gap-3 px-1">
@@ -298,22 +338,55 @@
                     <table class="w-full" id="capability-table">
                         <thead>
                             <tr class="border-b border-white/5 bg-white/[0.02]">
-                                <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Mesin</th>
                                 <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Item/Produk</th>
+                                <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Specs</th>
+                                <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Process</th>
+                                <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Capacity</th>
                                 <th class="text-left py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Status</th>
                                 <th class="text-right py-6 px-8 text-[12px] font-black text-slate-500 uppercase tracking-widest">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/5">
-                            @forelse($capabilities as $cap)
+                            @php $groupedCapabilities = $capabilities->groupBy('machine_name'); @endphp
+                            @forelse($groupedCapabilities as $machineName => $machineCaps)
+                            <tr class="bg-indigo-500/5 border-l-4 border-indigo-500">
+                                <td colspan="6" class="py-4 px-8 text-[11px] font-black text-indigo-400 uppercase tracking-widest">
+                                    Machine: {{ $machineName }}
+                                </td>
+                            </tr>
+                            @foreach($machineCaps as $cap)
                             <tr class="hover:bg-white/[0.01] transition-colors group">
-                                <td class="py-6 px-8 text-sm font-bold text-white">{{ $cap->machine_name }}</td>
-                                <td class="py-6 px-8 text-sm font-bold text-amber-400">{{ $cap->item_name }}</td>
+                                <td class="py-6 px-8 text-sm font-bold text-white">{{ $cap->item_name }}</td>
+                                <td class="py-6 px-8">
+                                    <div class="flex flex-col gap-1">
+                                        @if($cap->thickness) <span class="text-[11px] text-slate-400 font-bold">Thick: {{ $cap->thickness }} mic</span> @endif
+                                        @if($cap->diameter) <span class="text-[11px] text-slate-400 font-bold">Diam: {{ $cap->diameter }} mm</span> @endif
+                                        @if(!$cap->thickness && !$cap->diameter) <span class="text-slate-600 italic text-[11px]">-</span> @endif
+                                    </div>
+                                </td>
+                                <td class="py-6 px-8">
+                                    <div class="flex flex-col gap-1 text-[11px] font-black uppercase tracking-tighter">
+                                        <div class="flex justify-between w-24">
+                                            <span class="text-slate-500">Cavity:</span>
+                                            <span class="text-emerald-400">{{ $cap->cavity ?? 0 }}</span>
+                                        </div>
+                                        <div class="flex justify-between w-24">
+                                            <span class="text-slate-500">Cycle:</span>
+                                            <span class="text-emerald-400">{{ number_format($cap->cycle ?? 0, 2) }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-6 px-8">
+                                    <div class="flex flex-col">
+                                        <span class="text-sm font-black text-amber-400">{{ number_format($cap->production_rate, 2) }}</span>
+                                        <span class="text-[10px] text-slate-500 font-bold uppercase">{{ $cap->output_unit }} / {{ $cap->capacity_unit }}</span>
+                                    </div>
+                                </td>
                                 <td class="py-6 px-8">
                                     @if($cap->is_default)
-                                        <span class="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[11px] font-black uppercase tracking-widest">Primary Machine</span>
+                                        <span class="px-2 py-1 bg-amber-500/10 text-amber-500 rounded text-[11px] font-black uppercase tracking-widest">Primary</span>
                                     @else
-                                        <span class="px-2 py-1 bg-white/5 text-slate-500 rounded text-[11px] font-black uppercase tracking-widest">Alternative</span>
+                                        <span class="px-2 py-1 bg-white/5 text-slate-500 rounded text-[11px] font-black uppercase tracking-widest">Alt</span>
                                     @endif
                                 </td>
                                 <td class="py-6 px-8 text-right">
@@ -325,9 +398,10 @@
                                     </form>
                                 </td>
                             </tr>
+                            @endforeach
                             @empty
                             <tr>
-                                <td colspan="4" class="py-20 text-center text-slate-500 uppercase text-[12px] font-black tracking-widest">Matriks Kapabilitas Kosong</td>
+                                <td colspan="6" class="py-20 text-center text-slate-500 uppercase text-[12px] font-black tracking-widest">Matriks Kapabilitas Kosong</td>
                             </tr>
                             @endforelse
                         </tbody>

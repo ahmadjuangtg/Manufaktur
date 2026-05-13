@@ -43,7 +43,7 @@ class Machine extends Model
     public function capabilities()
     {
         return $this->belongsToMany(Item::class, 'machine_capabilities', 'machine_id', 'item_id')
-                    ->withPivot('is_default', 'production_rate')
+                    ->withPivot('is_default', 'production_rate', 'output_unit', 'capacity_unit', 'thickness', 'diameter', 'cavity', 'cycle')
                     ->withTimestamps();
     }
 }
