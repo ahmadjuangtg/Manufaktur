@@ -8,7 +8,7 @@ class StockMutation extends Model
 {
     protected $fillable = [
         'reference_no', 'work_order_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 
-        'note', 'user_id', 'approved_by', 'sent_by', 'received_by',
+        'note', 'rejection_reason', 'user_id', 'approved_by', 'sent_by', 'received_by',
         'approved_at', 'sent_at', 'received_at'
     ];
 

@@ -40,11 +40,28 @@
                     <td class="px-8 py-4 font-bold text-white tracking-tight">{{ $ref ?: 'TRANS-'.str_pad($items->first()->id, 5, '0', STR_PAD_LEFT) }}</td>
                     <td class="px-8 py-4 text-sm text-slate-300">{{ $items->first()->created_at->format('d M Y, H:i') }}</td>
                     <td class="px-8 py-4">
-                        @if($items->first()->type == 'IN')
-                        <span class="text-[11px] font-black bg-emerald-500/10 text-emerald-500 px-2.5 py-1 rounded-lg border border-emerald-500/20 uppercase tracking-tighter">STOCK IN</span>
-                        @else
-                        <span class="text-[11px] font-black bg-rose-500/10 text-rose-500 px-2.5 py-1 rounded-lg border border-rose-500/20 uppercase tracking-tighter">STOCK OUT</span>
-                        @endif
+                        @php
+                            $refText = $ref ?: '';
+                            $label = 'MANUAL TRANS';
+                            $color = 'indigo';
+                            
+                            if (str_contains($refText, 'OPNAME')) {
+                                $label = 'STOCK OPNAME';
+                                $color = 'amber';
+                            } elseif (str_contains($refText, 'MUTATION') || str_contains($refText, 'MUT-')) {
+                                $label = 'MUTASI GUDANG';
+                                $color = 'blue';
+                            } elseif (str_contains($refText, 'PRODUCTION') || str_contains($refText, 'WO-')) {
+                                $label = 'HASIL PRODUKSI';
+                                $color = 'emerald';
+                            } elseif (str_contains($refText, 'DEL-') || str_contains($refText, 'PKG-') || str_contains($refText, 'SJ-')) {
+                                $label = 'DELIVERY / POS';
+                                $color = 'rose';
+                            }
+                        @endphp
+                        <span class="text-[9px] font-black bg-{{ $color }}-500/10 text-{{ $color }}-500 px-2.5 py-1 rounded-lg border border-{{ $color }}-500/20 uppercase tracking-tighter">
+                            {{ $label }}
+                        </span>
                     </td>
                     <td class="px-8 py-4 text-sm font-bold text-indigo-400 uppercase tracking-wider">{{ $items->first()->warehouse->name }}</td>
                     <td class="px-8 py-4 text-center">
@@ -275,10 +292,14 @@
         const rows = document.getElementById('detail_rows');
         rows.innerHTML = '';
         items.forEach(item => {
+            const isInput = item.type === 'IN';
+            const qtyClass = isInput ? 'text-emerald-400' : 'text-rose-400';
+            const qtySign = isInput ? '+' : '-';
+            
             rows.innerHTML += `
                 <tr class="text-sm text-white">
                     <td class="px-4 py-4 font-bold">${item.item.name}</td>
-                    <td class="px-4 py-4 text-center font-black">${item.quantity}</td>
+                    <td class="px-4 py-4 text-center font-black ${qtyClass}">${qtySign}${parseFloat(item.quantity)}</td>
                     <td class="px-4 py-4 text-center text-slate-500 font-bold uppercase tracking-widest">${item.item.unit ? item.item.unit.name : '-'}</td>
                     <td class="px-4 py-4 text-slate-400 italic">${item.note || '-'}</td>
                 </tr>

@@ -37,16 +37,57 @@
 
         /* SweetAlert2 Custom Styling */
         .swal2-popup {
-            background: rgba(30, 41, 59, 0.9) !important;
-            backdrop-filter: blur(15px) !important;
+            background: rgba(15, 23, 42, 0.8) !important;
+            backdrop-filter: blur(20px) saturate(180%) !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            border-radius: 2rem !important;
+            border-radius: 2.5rem !important;
             color: #f8fafc !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            padding: 2rem !important;
         }
-        .swal2-title { color: #f8fafc !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 1.25rem !important; }
-        .swal2-html-container { color: #94a3b8 !important; font-size: 0.875rem !important; }
-        .swal2-confirm { background: #4f46e5 !important; border-radius: 1rem !important; font-weight: 800 !important; text-transform: uppercase !important; font-size: 0.75rem !important; letter-spacing: 0.1em !important; padding: 1rem 2rem !important; }
-        .swal2-cancel { background: rgba(255,255,255,0.05) !important; color: #94a3b8 !important; border-radius: 1rem !important; font-weight: 800 !important; text-transform: uppercase !important; font-size: 0.75rem !important; letter-spacing: 0.1em !important; }
+        .swal2-title { 
+            color: #f8fafc !important; 
+            font-weight: 800 !important; 
+            text-transform: uppercase !important; 
+            letter-spacing: 0.1em !important; 
+            font-size: 1.1rem !important;
+            margin-bottom: 1rem !important;
+        }
+        .swal2-html-container { 
+            color: #94a3b8 !important; 
+            font-size: 0.875rem !important; 
+            font-weight: 500 !important;
+            line-height: 1.6 !important;
+        }
+        .swal2-icon {
+            border-width: 2px !important;
+            margin: 1rem auto 2rem !important;
+        }
+        .swal2-confirm { 
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important; 
+            border-radius: 1.25rem !important; 
+            font-weight: 800 !important; 
+            text-transform: uppercase !important; 
+            font-size: 0.75rem !important; 
+            letter-spacing: 0.15em !important; 
+            padding: 1rem 2.5rem !important;
+            box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4) !important;
+            border: none !important;
+        }
+        .swal2-cancel { 
+            background: rgba(255, 255, 255, 0.03) !important; 
+            color: #94a3b8 !important; 
+            border-radius: 1.25rem !important; 
+            font-weight: 800 !important; 
+            text-transform: uppercase !important; 
+            font-size: 0.75rem !important; 
+            letter-spacing: 0.15em !important;
+            padding: 1rem 2rem !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+        .swal2-timer-progress-bar {
+            background: #6366f1 !important;
+        }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -204,6 +245,11 @@
                 <i data-lucide="arrow-left-right" class="w-6 h-6"></i> Inventory
             </a>
             @endif
+            @if(Auth::user()->hasPermission('stock_card_view'))
+            <a href="{{ route('stock_card.index') }}" class="sidebar-item {{ Request::is('transactions/stock-card*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="scroll-text" class="w-6 h-6"></i> Kartu Stock
+            </a>
+            @endif
             @if(Auth::user()->hasPermission('stock_mutation_view'))
             <a href="{{ route('mutations.request.index') }}" class="sidebar-item {{ Request::is('transactions/mutations/request*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
                 <i data-lucide="file-plus" class="w-6 h-6"></i> Request Mutasi
@@ -229,11 +275,7 @@
                 <i data-lucide="check-circle" class="w-6 h-6"></i> Approval Stock Opname
             </a>
             @endif
-            @if(Auth::user()->hasPermission('stock_card_view'))
-            <a href="{{ route('stock_card.index') }}" class="sidebar-item {{ Request::is('transactions/stock-card*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="scroll-text" class="w-6 h-6"></i> Kartu Stock
-            </a>
-            @endif
+
             @endif
 
             @php
@@ -335,7 +377,7 @@
                 </button>
                 <div>
                     <h2 class="text-xl lg:text-2xl font-black text-white tracking-tight">{{ $title ?? 'Dashboard' }}</h2>
-                    <p class="hidden sm:block text-slate-500 text-[12px] font-bold uppercase tracking-[0.2em] mt-1">Aori Inventory Intelligence</p>
+                    <p class="hidden sm:block text-slate-500 text-[12px] font-bold uppercase tracking-[0.2em] mt-1">Aori Manufacture</p>
                 </div>
             </div>
             <div class="flex items-center gap-6">
@@ -357,6 +399,20 @@
                 <i data-lucide="check-circle" class="w-4 h-4"></i> {{ session('success') }}
             </div>
             @endif
+
+            @if($errors->any())
+            <div class="mb-6 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-500 text-xs font-bold">
+                <div class="flex items-center gap-3 mb-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4"></i> Terdapat kesalahan pengisian form:
+                </div>
+                <ul class="list-disc pl-8 space-y-1">
+                    @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+
             @yield('content')
         </div>
     </main>
@@ -443,6 +499,46 @@
                 }
             });
         };
+
+        // Override native window.alert
+        window.alert = function(message) {
+            Swal.fire({
+                title: 'NOTIFIKASI',
+                text: message,
+                icon: 'info',
+                confirmButtonText: 'MENGERTI'
+            });
+        };
+
+        // Global Interceptor for native confirm in onsubmit
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            const onsubmit = form.getAttribute('onsubmit');
+            
+            if (onsubmit && onsubmit.includes('confirm(')) {
+                e.preventDefault();
+                
+                // Extract message from confirm('...') or confirm("...")
+                const match = onsubmit.match(/confirm\(['"](.+)['"]\)/);
+                const message = match ? match[1] : 'Apakah Anda yakin ingin melanjutkan tindakan ini?';
+                
+                Swal.fire({
+                    title: 'KONFIRMASI',
+                    text: message,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'YA, LANJUTKAN',
+                    cancelButtonText: 'BATAL',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Temporarily remove onsubmit to avoid infinite loop
+                        form.removeAttribute('onsubmit');
+                        form.submit();
+                    }
+                });
+            }
+        });
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');

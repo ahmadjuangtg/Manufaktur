@@ -2,10 +2,42 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div>
             <h3 class="text-xl font-bold text-white uppercase tracking-tight">Monitor & Eksekusi Mutasi</h3>
             <p class="text-slate-400 text-sm italic">Lacak status pengiriman dan penerimaan barang antar gudang</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <form action="{{ route('mutations.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
+                <select name="from_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Asal: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('from_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="to_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Tujuan: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('to_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="status" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Status: Semua</option>
+                    <option value="PENDING" {{ request('status') == 'PENDING' ? 'selected' : '' }}>PENDING</option>
+                    <option value="APPROVED" {{ request('status') == 'APPROVED' ? 'selected' : '' }}>APPROVED</option>
+                    <option value="SENDING" {{ request('status') == 'SENDING' ? 'selected' : '' }}>SENDING</option>
+                    <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>COMPLETED</option>
+                    <option value="REJECTED" {{ request('status') == 'REJECTED' ? 'selected' : '' }}>REJECTED</option>
+                </select>
+
+                @if(request()->anyFilled(['from_warehouse_id', 'to_warehouse_id', 'status']))
+                <a href="{{ route('mutations.index') }}" class="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all" title="Reset Filter">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </a>
+                @endif
+            </form>
         </div>
     </div>
 
@@ -67,24 +99,18 @@
                             @endfor
                         </div>
                     </td>
-                    <td class="px-8 py-5 text-right space-x-2">
+                    <td class="px-8 py-5 flex justify-end items-center gap-2">
                         @if($m->status == 'APPROVED')
-                        <form action="{{ route('mutations.send', $m->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
-                                <i data-lucide="truck" class="w-3 h-3"></i> Kirim Barang
-                            </button>
-                        </form>
+                        <button onclick="sendMutation({{ $m->id }})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
+                            <i data-lucide="truck" class="w-3 h-3"></i> Kirim Barang
+                        </button>
                         @elseif($m->status == 'SENDING')
-                        <form action="{{ route('mutations.receive', $m->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
-                                <i data-lucide="check" class="w-3 h-3"></i> Terima Barang
-                            </button>
-                        </form>
+                        <button onclick="receiveMutation({{ $m->id }})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
+                            <i data-lucide="check" class="w-3 h-3"></i> Terima Barang
+                        </button>
                         @endif
-                        <button onclick="viewDetails({{ $m->id }})" class="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                        <button onclick="window.print()" class="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all"><i data-lucide="printer" class="w-4 h-4"></i></button>
+                        <button onclick="viewDetails({{ $m->id }})" class="flex items-center justify-center w-8 h-8 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                        <a href="{{ route('mutations.print', $m->id) }}" target="_blank" class="flex items-center justify-center w-8 h-8 bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all"><i data-lucide="printer" class="w-4 h-4"></i></a>
                     </td>
                 </tr>
                 @empty
@@ -131,7 +157,17 @@
                 
                 <div>
                     <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 ml-1">Daftar Item</h4>
-                    <div id="detItems" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-2"></div>
+                    <div id="detItems" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-2 mb-6"></div>
+                </div>
+
+                <div id="detNoteWrapper" class="p-6 bg-slate-800/30 rounded-2xl border border-white/5 hidden mb-4">
+                    <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Catatan Pengirim</p>
+                    <p id="detNote" class="text-xs text-slate-300 italic"></p>
+                </div>
+
+                <div id="detRejectWrapper" class="p-6 bg-rose-500/5 rounded-2xl border border-rose-500/10 hidden">
+                    <p class="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-2">Alasan Penolakan</p>
+                    <p id="detReject" class="text-xs text-rose-300 font-bold"></p>
                 </div>
             </div>
 
@@ -220,6 +256,20 @@
                     document.getElementById('logSent').classList.remove('opacity-30');
                     document.getElementById('timeSent').innerText = new Date(data.sent_at).toLocaleString();
                 }
+                if (data.note) {
+                    document.getElementById('detNote').innerText = data.note;
+                    document.getElementById('detNoteWrapper').classList.remove('hidden');
+                } else {
+                    document.getElementById('detNoteWrapper').classList.add('hidden');
+                }
+
+                if (data.rejection_reason) {
+                    document.getElementById('detReject').innerText = data.rejection_reason;
+                    document.getElementById('detRejectWrapper').classList.remove('hidden');
+                } else {
+                    document.getElementById('detRejectWrapper').classList.add('hidden');
+                }
+
                 if (data.received_at) {
                     document.getElementById('logRec').classList.remove('opacity-30');
                     document.getElementById('timeRec').innerText = new Date(data.received_at).toLocaleString();
@@ -234,6 +284,70 @@
         document.getElementById('detailsModal').classList.add('hidden');
         // Reset audit trail opacity
         ['logApp', 'logSent', 'logRec'].forEach(id => document.getElementById(id).classList.add('opacity-30'));
+    }
+
+    async function sendMutation(id) {
+        const result = await Swal.fire({
+            title: 'KONFIRMASI PENGIRIMAN',
+            text: 'Apakah Anda yakin ingin mengirim barang untuk mutasi ini?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'YA, KIRIM SEKARANG',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#3b82f6'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`{{ url('transactions/mutations/send') }}/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                Swal.fire('ERROR', err.message, 'error');
+            }
+        }
+    }
+
+    async function receiveMutation(id) {
+        const result = await Swal.fire({
+            title: 'KONFIRMASI PENERIMAAN',
+            text: 'Apakah Anda yakin barang sudah sampai dan sesuai?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'YA, TERIMA BARANG',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#10b981'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`{{ url('transactions/mutations/receive') }}/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                Swal.fire('ERROR', err.message, 'error');
+            }
+        }
     }
 </script>
 @endsection

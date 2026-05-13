@@ -116,12 +116,18 @@
                 </div>
                 <div class="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
                     <p class="text-[12px] font-black text-slate-500 uppercase tracking-widest mb-1">Difference</p>
-                    <p id="modal_diff" class="text-xl font-black text-slate-400">0</p>
+                    <div class="flex items-baseline gap-2">
+                        <p id="modal_diff" class="text-xl font-black text-slate-400">0</p>
+                        <span id="modal_unit_diff" class="text-[10px] font-black text-slate-600 uppercase">UNIT</span>
+                    </div>
                 </div>
             </div>
 
             <div class="space-y-2">
-                <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Physical Stock Count*</label>
+                <div class="flex justify-between items-center ml-1">
+                    <label class="block text-[11px] font-black text-slate-500 uppercase tracking-widest">Physical Stock Count*</label>
+                    <span id="modal_unit_input" class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">UNIT</span>
+                </div>
                 <input type="number" id="modal_actual_input" step="0.01" class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-4 px-6 text-2xl font-black text-white outline-none focus:border-indigo-500 transition-all shadow-inner" oninput="updateModalDiff()">
             </div>
 
@@ -152,10 +158,23 @@
                 </div>
             </div>
         </td>
-        <td class="px-4 py-6 text-center text-slate-500 font-black text-[11px] system-stock-val">SYSTEM_STOCK</td>
-        <td class="px-4 py-6 text-center text-white font-black text-[11px] actual-stock-val">SYSTEM_STOCK</td>
         <td class="px-4 py-6 text-center">
-            <span class="diff-badge text-[11px] font-black text-slate-400">0</span>
+            <div class="flex flex-col items-center">
+                <span class="text-slate-500 font-black text-[11px] system-stock-val">SYSTEM_STOCK</span>
+                <span class="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">UNIT_NAME</span>
+            </div>
+        </td>
+        <td class="px-4 py-6 text-center">
+            <div class="flex flex-col items-center">
+                <span class="text-white font-black text-[11px] actual-stock-val">SYSTEM_STOCK</span>
+                <span class="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">UNIT_NAME</span>
+            </div>
+        </td>
+        <td class="px-4 py-6 text-center">
+            <div class="flex flex-col items-center">
+                <span class="diff-badge text-[11px] font-black text-slate-400">0</span>
+                <span class="text-[9px] text-slate-600 font-bold uppercase tracking-tighter">UNIT_NAME</span>
+            </div>
         </td>
         <td class="px-8 py-6 text-right">
             <div class="flex justify-end gap-2">
@@ -218,7 +237,8 @@
             .replace(/ITEM_ID/g, itemSelect.value)
             .replace(/ITEM_NAME/g, selectedOption.dataset.name)
             .replace(/ITEM_CODE/g, selectedOption.dataset.code)
-            .replace(/SYSTEM_STOCK/g, currentFetchedStock);
+            .replace(/SYSTEM_STOCK/g, currentFetchedStock)
+            .replace(/UNIT_NAME/g, selectedOption.dataset.unit);
 
         document.getElementById('opnameRows').insertAdjacentHTML('beforeend', rowHtml);
         lucide.createIcons();
@@ -235,11 +255,16 @@
         const actualStock = document.getElementById('input_actual_' + index).value;
         const note = document.getElementById('input_note_' + index).value;
 
+        const unit = row.querySelector('.text-slate-600.font-bold').innerText;
+
         document.getElementById('modal_item_name').innerText = itemName;
         document.getElementById('modal_item_code').innerText = itemCode;
         document.getElementById('modal_system_stock').innerText = systemStock;
         document.getElementById('modal_actual_input').value = actualStock;
         document.getElementById('modal_note_input').value = note;
+        
+        document.getElementById('modal_unit_diff').innerText = unit;
+        document.getElementById('modal_unit_input').innerText = unit;
 
         updateModalDiff();
         document.getElementById('editModal').classList.remove('hidden');

@@ -159,6 +159,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/stage/finish/{id}', [\App\Http\Controllers\ShopFloorController::class, 'finishStage'])->name('shop_floor.stage.finish');
         Route::post('/machine/status/{id}', [\App\Http\Controllers\ShopFloorController::class, 'updateMachineStatus'])->name('shop_floor.machine.status');
         Route::post('/output/report/{id}', [\App\Http\Controllers\ShopFloorController::class, 'reportOutput'])->name('shop_floor.output.report');
+        Route::post('/material-request/{id}', [\App\Http\Controllers\ShopFloorController::class, 'storeMaterialRequest'])->name('shop_floor.material_request');
+        Route::get('/get-stage-items/{id}', [\App\Http\Controllers\ShopFloorController::class, 'getStageItems'])->name('shop_floor.get_stage_items');
     });
 
     // PRODUCTION REPORTS (LHP, NPB, PHP)
@@ -197,6 +199,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/send/{id}', [\App\Http\Controllers\StockMutationController::class, 'send'])->name('mutations.send');
             Route::post('/receive/{id}', [\App\Http\Controllers\StockMutationController::class, 'receive'])->name('mutations.receive');
             Route::get('/get-details/{id}', [\App\Http\Controllers\StockMutationController::class, 'show'])->name('mutations.get_details');
+            Route::get('/print/{id}', [\App\Http\Controllers\StockMutationController::class, 'print'])->name('mutations.print');
         });
     });
 

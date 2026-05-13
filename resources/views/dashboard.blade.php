@@ -27,7 +27,7 @@
                 <span class="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Real-time</span>
             </div>
             <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Total Stok Fisik</p>
-            <h4 class="text-3xl font-black text-white mt-1">{{ number_format($stats['total_stock'], 2) }}</h4>
+            <h4 class="text-3xl font-black text-white mt-1">{{ number_format($stats['total_stock']) }}</h4>
         </div>
         <div class="glass-card p-6 rounded-2xl bg-indigo-600/10 border-indigo-500/20">
             <div class="flex justify-between items-start mb-4">
@@ -120,7 +120,7 @@
                                 </div>
                             </td>
                             <td class="px-8 py-6 text-right font-black text-white text-sm">
-                                {{ number_format($wo->products->sum('quantity'), 2) }}
+                                {{ number_format($wo->products->sum('quantity')) }}
                                 <div class="text-[9px] text-slate-500 font-bold uppercase">{{ $wo->products->first()->item->unit->name ?? 'Unit' }}</div>
                             </td>
                         </tr>
@@ -176,7 +176,7 @@
                     <div class="flex justify-between items-center mb-3">
                         <span class="text-[11px] font-black text-indigo-400 uppercase tracking-[0.2em]">{{ $cat['name'] }}</span>
                         <div class="text-right">
-                            <span class="text-2xl font-black text-white">{{ number_format($cat['balance'], 2) }}</span>
+                            <span class="text-2xl font-black text-white">{{ number_format($cat['balance']) }}</span>
                             <p class="text-[9px] text-slate-500 font-black uppercase">Current Stock</p>
                         </div>
                     </div>

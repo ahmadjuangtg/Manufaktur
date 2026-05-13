@@ -159,7 +159,7 @@
                         <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">HNA (Net Amount)*</label>
                         <div class="relative">
                             <span class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-bold">Rp</span>
-                            <input type="number" name="hna" id="hna" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-white font-black" required oninput="calculatePPN()">
+                            <input type="text" name="hna" id="hna" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-white font-black" required oninput="handleCurrencyInput(this); calculatePPN()">
                         </div>
                     </div>
 
@@ -167,7 +167,7 @@
                         <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">HNA + PPN (11%)*</label>
                         <div class="relative">
                             <span class="absolute left-6 top-1/2 -translate-y-1/2 text-emerald-500 font-bold">Rp</span>
-                            <input type="number" name="hna_ppn" id="hna_ppn" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-emerald-400 font-black" required>
+                            <input type="text" name="hna_ppn" id="hna_ppn" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-emerald-400 font-black" required oninput="handleCurrencyInput(this)">
                         </div>
                     </div>
 
@@ -175,7 +175,7 @@
                         <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">HET (Retail Price)*</label>
                         <div class="relative">
                             <span class="absolute left-6 top-1/2 -translate-y-1/2 text-amber-500 font-bold">Rp</span>
-                            <input type="number" name="het" id="het" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-amber-400 font-black" required>
+                            <input type="text" name="het" id="het" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-14 pr-6 focus:border-indigo-500 outline-none text-amber-400 font-black" required oninput="handleCurrencyInput(this)">
                         </div>
                     </div>
 
@@ -197,12 +197,36 @@
 </div>
 
 <script>
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    function handleCurrencyInput(input) {
+        let value = input.value.replace(/\D/g, "");
+        if (value === "") {
+            input.value = "";
+            return;
+        }
+        input.value = formatNumber(value);
+    }
+
     function calculatePPN() {
-        const hna = document.getElementById('hna').value;
-        if (hna) {
-            document.getElementById('hna_ppn').value = Math.round(hna * 1.11);
+        const hnaInput = document.getElementById('hna');
+        const hnaRaw = hnaInput.value.replace(/\D/g, "");
+        if (hnaRaw) {
+            const hnaPPN = Math.round(parseInt(hnaRaw) * 1.11);
+            const hnaPPNInput = document.getElementById('hna_ppn');
+            hnaPPNInput.value = formatNumber(hnaPPN);
         }
     }
+
+    // Clean data before submit
+    document.getElementById('priceForm').addEventListener('submit', function(e) {
+        ['hna', 'hna_ppn', 'het'].forEach(id => {
+            const input = document.getElementById(id);
+            input.value = input.value.replace(/\D/g, "");
+        });
+    });
 
     function openCreateModal() {
         document.getElementById('modalTitle').innerText = 'Authorize New Price';
@@ -217,9 +241,8 @@
         document.getElementById('priceForm').action = "/master/price_lists/update/" + price.id;
         
         document.getElementById('item_id_modal').value = price.item_id;
-        document.getElementById('item_id_modal').disabled = true; // Typically don't change item on edit
+        document.getElementById('item_id_modal').disabled = true;
         
-        // Add a hidden input for item_id since disabled selects don't submit
         let hiddenItem = document.getElementById('hidden_item_id');
         if (!hiddenItem) {
             hiddenItem = document.createElement('input');
@@ -230,12 +253,11 @@
         }
         hiddenItem.value = price.item_id;
 
-        document.getElementById('hna').value = price.hna;
-        document.getElementById('hna_ppn').value = price.hna_ppn;
-        document.getElementById('het').value = price.het;
+        document.getElementById('hna').value = formatNumber(Math.round(price.hna));
+        document.getElementById('hna_ppn').value = formatNumber(Math.round(price.hna_ppn));
+        document.getElementById('het').value = formatNumber(Math.round(price.het));
         document.getElementById('start_date').value = price.start_date;
 
-        // Reset and Set Warehouse Checkboxes
         document.querySelectorAll('.warehouse-checkbox').forEach(cb => {
             cb.checked = price.all_ids && price.all_warehouses.some(wh => wh.id == cb.value);
         });

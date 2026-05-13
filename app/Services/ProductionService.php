@@ -54,7 +54,8 @@ class ProductionService
                     \App\Models\WorkOrderStageItem::create([
                         'work_order_stage_id' => $stage->id,
                         'item_id' => $si->item_id,
-                        'quantity' => $si->quantity * $wo->total_batch,
+                        'quantity_per_batch' => $si->quantity,
+                        'quantity_total' => $si->quantity * $wo->total_batch,
                         'type' => $si->type,
                     ]);
                 }
@@ -110,7 +111,8 @@ class ProductionService
                             \App\Models\WorkOrderStageItem::create([
                                 'work_order_stage_id' => $stage->id,
                                 'item_id' => $item['item_id'],
-                                'quantity' => $item['quantity'],
+                                'quantity_per_batch' => $item['quantity'],
+                                'quantity_total' => $item['quantity'],
                                 'type' => $item['type'] ?? 'MATERIAL'
                             ]);
                         }

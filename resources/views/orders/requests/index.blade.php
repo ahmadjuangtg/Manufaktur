@@ -56,7 +56,7 @@
 
 <!-- Modal -->
 <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-2xl rounded-2xl flex flex-col max-h-[90vh] overflow-hidden shadow-2xl">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-4xl rounded-2xl flex flex-col max-h-[90vh] overflow-hidden shadow-2xl">
         <div class="p-6 border-b border-white/5 flex justify-between items-center bg-slate-800/50">
             <h3 class="text-lg font-bold text-white">Form Permintaan Barang</h3>
             <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -87,9 +87,10 @@
                 <div class="pt-6 border-t border-white/5">
                     <h4 class="text-xs font-bold text-indigo-400 uppercase mb-4 tracking-widest italic">Daftar Item</h4>
                     <div id="itemList" class="space-y-4">
-                        <div class="grid grid-cols-12 gap-3 item-row">
-                            <div class="col-span-8">
-                                <select name="items[0][id]" class="item-select w-full bg-[#1e293b] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs">
+                        <div class="grid grid-cols-12 gap-3 item-row items-end">
+                            <div class="col-span-5">
+                                <label class="block text-[9px] text-slate-500 uppercase font-black mb-1 tracking-widest">Nama Item</label>
+                                <select name="items[0][id]" onchange="refreshStock(this)" class="item-select w-full bg-[#1e293b] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs">
                                     <option value="">-- Pilih Item --</option>
                                     @foreach($items as $it)
                                     <option value="{{ $it->id }}" data-type-id="{{ $it->type_id }}">{{ $it->name }}</option>
@@ -97,14 +98,21 @@
                                 </select>
                             </div>
                             <div class="col-span-3">
-                                <input type="number" name="items[0][quantity]" placeholder="Qty" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs" required>
+                                <label class="block text-[9px] text-slate-500 uppercase font-black mb-1 tracking-widest text-center">Stock Saat Ini</label>
+                                <div class="bg-black/20 border border-white/5 rounded-lg py-2 px-3 text-center">
+                                    <span class="stock-label text-[10px] font-black text-slate-500">-</span>
+                                </div>
                             </div>
-                            <div class="col-span-1 flex items-center">
-                                <button type="button" onclick="removeItem(this)" class="text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <div class="col-span-3">
+                                <label class="block text-[9px] text-slate-500 uppercase font-black mb-1 tracking-widest">Qty Diminta</label>
+                                <input type="number" name="items[0][quantity]" placeholder="0" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs" required>
+                            </div>
+                            <div class="col-span-1 flex items-center justify-center pb-2">
+                                <button type="button" onclick="removeItem(this)" class="text-rose-500 hover:text-rose-400 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                             </div>
                         </div>
                     </div>
-                    <button type="button" onclick="addItem()" class="mt-4 text-xs font-bold text-indigo-400 flex items-center gap-2">
+                    <button type="button" onclick="addItem()" class="mt-4 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-2">
                         <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Item Lain
                     </button>
                 </div>
@@ -130,15 +138,53 @@
         filterAllItemDropdowns(this.value);
     });
 
+    // Listen for warehouse change to refresh all stocks
+    document.querySelector('select[name="warehouse_id"]').addEventListener('change', function() {
+        document.querySelectorAll('.item-select').forEach(select => {
+            refreshStock(select);
+        });
+    });
+
+    async function refreshStock(select) {
+        const row = select.closest('.item-row');
+        const label = row.querySelector('.stock-label');
+        const warehouseId = document.querySelector('select[name="warehouse_id"]').value;
+        const itemId = select.value;
+
+        if (!itemId || !warehouseId) {
+            label.innerText = '-';
+            label.className = 'stock-label text-[10px] font-black text-slate-500';
+            return;
+        }
+
+        label.innerText = '...';
+        
+        try {
+            const response = await fetch(`/transactions/stock-opname/get-stock?item_id=${itemId}&warehouse_id=${warehouseId}`);
+            const data = await response.json();
+            
+            const stock = parseFloat(data.stock);
+            label.innerText = stock.toLocaleString();
+            
+            if (stock <= 0) {
+                label.className = 'stock-label text-[10px] font-black text-rose-500';
+            } else {
+                label.className = 'stock-label text-[10px] font-black text-emerald-500';
+            }
+        } catch (error) {
+            label.innerText = 'Err';
+            label.className = 'stock-label text-[10px] font-black text-rose-500';
+        }
+    }
+
     function filterAllItemDropdowns(typeId) {
         const selects = document.querySelectorAll('.item-select');
         selects.forEach(select => {
             const options = select.querySelectorAll('option');
             
             options.forEach(opt => {
-                if (!opt.value) return; // Skip placeholder
+                if (!opt.value) return;
                 
-                // If typeId is empty (Semua Tipe) or matches item type, show it
                 if (!typeId || opt.dataset.typeId == typeId) {
                     opt.style.display = '';
                     opt.disabled = false;
@@ -146,7 +192,8 @@
                     opt.style.display = 'none';
                     opt.disabled = true;
                     if (select.value == opt.value) {
-                        select.value = ''; // Reset if current selected is now hidden
+                        select.value = '';
+                        refreshStock(select);
                     }
                 }
             });
@@ -162,12 +209,15 @@
         select.name = `items[${itemIndex}][id]`;
         select.value = '';
         
+        const stockLabel = row.querySelector('.stock-label');
+        stockLabel.innerText = '-';
+        stockLabel.className = 'stock-label text-[10px] font-black text-slate-500';
+        
         row.querySelector('input').name = `items[${itemIndex}][quantity]`;
         row.querySelector('input').value = '';
         
         list.appendChild(row);
         
-        // Re-apply filter to the new dropdown
         const selectedType = document.querySelector('select[name="type_id"]').value;
         filterAllItemDropdowns(selectedType);
         

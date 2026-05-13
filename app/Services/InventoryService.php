@@ -46,8 +46,8 @@ class InventoryService
         return DB::transaction(function () use ($id) {
             $mutation = StockMutation::with('details')->findOrFail($id);
             
-            if ($mutation->status !== 'APPROVED') {
-                throw new \Exception("Hanya mutasi yang berstatus APPROVED yang dapat diselesaikan.");
+            if (!in_array($mutation->status, ['APPROVED', 'SENDING'])) {
+                throw new \Exception("Hanya mutasi yang berstatus APPROVED atau SENDING yang dapat diselesaikan.");
             }
 
             foreach ($mutation->details as $detail) {
@@ -59,6 +59,7 @@ class InventoryService
                     'quantity' => $detail->quantity,
                     'reference' => 'MUTATION-' . $mutation->reference_no,
                     'note' => 'Mutation to ' . $mutation->toWarehouse->name,
+                    'user_id' => Auth::id(),
                 ]);
 
                 // 2. Add to destination
@@ -69,6 +70,7 @@ class InventoryService
                     'quantity' => $detail->quantity,
                     'reference' => 'MUTATION-' . $mutation->reference_no,
                     'note' => 'Mutation from ' . $mutation->fromWarehouse->name,
+                    'user_id' => Auth::id(),
                 ]);
             }
 

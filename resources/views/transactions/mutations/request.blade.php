@@ -2,14 +2,47 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         <div>
             <h3 class="text-xl font-bold text-white uppercase tracking-tight">Request Mutasi Barang</h3>
             <p class="text-slate-400 text-sm italic">Ajukan perpindahan stok antar gudang</p>
         </div>
-        <button onclick="openRequestModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> Buat Permintaan Baru
-        </button>
+        <div class="flex flex-wrap items-center gap-3">
+            <form action="{{ route('mutations.request.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
+                <select name="from_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Asal: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('from_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="to_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Tujuan: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('to_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="status" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Status: Semua</option>
+                    <option value="PENDING" {{ request('status') == 'PENDING' ? 'selected' : '' }}>PENDING</option>
+                    <option value="APPROVED" {{ request('status') == 'APPROVED' ? 'selected' : '' }}>APPROVED</option>
+                    <option value="SENDING" {{ request('status') == 'SENDING' ? 'selected' : '' }}>SENDING</option>
+                    <option value="COMPLETED" {{ request('status') == 'COMPLETED' ? 'selected' : '' }}>COMPLETED</option>
+                    <option value="REJECTED" {{ request('status') == 'REJECTED' ? 'selected' : '' }}>REJECTED</option>
+                </select>
+
+                @if(request()->anyFilled(['from_warehouse_id', 'to_warehouse_id', 'status']))
+                <a href="{{ route('mutations.request.index') }}" class="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all" title="Reset Filter">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </a>
+                @endif
+            </form>
+            <div class="h-8 w-[1px] bg-white/5 mx-2 hidden md:block"></div>
+            <button onclick="openRequestModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Buat Permintaan Baru
+            </button>
+        </div>
     </div>
 
     <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-slate-900/20">
@@ -104,7 +137,7 @@
                 <div class="grid grid-cols-2 gap-8">
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Asal (Pengirim)*</label>
-                        <select name="from_warehouse_id" onchange="checkWarehouses(this)" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
+                        <select name="from_warehouse_id" id="modal_from_warehouse_id" onchange="checkWarehouses(this); document.querySelectorAll('.item-selector').forEach(s => updateRowInfo(s));" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
                             <option value="">Pilih Gudang Asal</option>
                             @foreach($warehouses as $w)
                             <option value="{{ $w->id }}">{{ $w->name }}</option>
@@ -113,7 +146,7 @@
                     </div>
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Tujuan (Penerima)*</label>
-                        <select name="to_warehouse_id" onchange="checkWarehouses(this)" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
+                        <select name="to_warehouse_id" id="modal_to_warehouse_id" onchange="checkWarehouses(this); document.querySelectorAll('.item-selector').forEach(s => updateRowInfo(s));" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
                             <option value="">Pilih Gudang Tujuan</option>
                             @foreach($warehouses as $w)
                             <option value="{{ $w->id }}">{{ $w->name }}</option>
@@ -131,26 +164,39 @@
                     </div>
                     
                     <div id="itemRows" class="space-y-3">
-                        <div class="item-row grid grid-cols-12 gap-4 items-end bg-slate-800/30 p-4 rounded-2xl border border-white/5">
-                            <div class="col-span-6">
-                                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block">Item/SKU</label>
-                                <select name="items[0][item_id]" onchange="updateUnitLabel(this)" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all select2" required>
-                                    <option value="">Pilih Item</option>
-                                    @foreach($items as $i)
-                                    <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->code }} - {{ $i->name }}</option>
-                                    @endforeach
-                                </select>
+                        <div class="item-row bg-slate-800/30 p-6 rounded-3xl border border-white/5 relative">
+                            <div class="grid grid-cols-12 gap-6 items-end">
+                                <div class="col-span-12 md:col-span-5">
+                                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Item/SKU</label>
+                                    <select name="items[0][item_id]" onchange="updateRowInfo(this)" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all select2 item-selector" required>
+                                        <option value="">Pilih Item</option>
+                                        @foreach($items as $i)
+                                        <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->code }} - {{ $i->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-span-6 md:col-span-3">
+                                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Quantity</label>
+                                    <input type="number" name="items[0][quantity]" step="0.01" class="qty-input w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required placeholder="0.00">
+                                </div>
+                                <div class="col-span-4 md:col-span-2">
+                                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Satuan</label>
+                                    <input type="text" class="unit-label w-full bg-slate-900/40 border border-transparent rounded-xl py-3 px-4 text-[10px] text-slate-500 font-black uppercase outline-none" readonly value="-">
+                                </div>
+                                <div class="col-span-2 md:col-span-2 flex justify-center pb-1">
+                                    <button type="button" class="p-3 text-slate-600 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
                             </div>
-                            <div class="col-span-3">
-                                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block">Quantity</label>
-                                <input type="number" name="items[0][quantity]" step="0.01" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required placeholder="0.00">
-                            </div>
-                            <div class="col-span-2">
-                                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block">Satuan</label>
-                                <input type="text" class="unit-label w-full bg-slate-900/40 border border-transparent rounded-xl py-3 px-4 text-[10px] text-slate-500 font-black uppercase outline-none" readonly value="-">
-                            </div>
-                            <div class="col-span-1 flex justify-center">
-                                <button type="button" class="p-3 text-slate-600 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+
+                            <div class="mt-4 flex gap-4">
+                                <div class="px-3 py-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-2">
+                                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Asal:</span>
+                                    <span class="stock-from text-[10px] font-black text-indigo-400">-</span>
+                                </div>
+                                <div class="px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-2">
+                                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Tujuan:</span>
+                                    <span class="stock-to text-[10px] font-black text-emerald-400">-</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -231,40 +277,84 @@
     }
 
     function checkWarehouses(select) {
-        const fromWh = document.querySelector('select[name="from_warehouse_id"]').value;
-        const toWh = document.querySelector('select[name="to_warehouse_id"]').value;
+        const fromWh = document.getElementById('modal_from_warehouse_id').value;
+        const toWh = document.getElementById('modal_to_warehouse_id').value;
 
         if (fromWh && toWh && fromWh === toWh) {
-            showToast('Gudang asal dan tujuan tidak boleh sama!', 'warning');
-            select.value = ''; // Reset the select that was just changed
+            Swal.fire('PERINGATAN', 'Gudang asal dan tujuan tidak boleh sama!', 'warning');
+            select.value = ''; 
         }
     }
 
-    function updateUnitLabel(select) {
+    function updateRowInfo(select) {
+        const row = select.closest('.item-row');
+        const item_id = select.value;
+        const from_wh = document.getElementById('modal_from_warehouse_id').value;
+        const to_wh = document.getElementById('modal_to_warehouse_id').value;
         const unit = select.options[select.selectedIndex].getAttribute('data-unit') || '-';
-        select.closest('.item-row').querySelector('.unit-label').value = unit;
+        
+        row.querySelector('.unit-label').value = unit;
+        
+        if (item_id) {
+            if (from_wh) {
+                fetch(`{{ route('opname.get_stock') }}?item_id=${item_id}&warehouse_id=${from_wh}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        row.querySelector('.stock-from').innerText = data.stock + ' ' + unit;
+                        row.querySelector('.stock-from').dataset.stock = data.stock;
+                    })
+                    .catch(err => console.error('Error fetching source stock:', err));
+            }
+            if (to_wh) {
+                fetch(`{{ route('opname.get_stock') }}?item_id=${item_id}&warehouse_id=${to_wh}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        row.querySelector('.stock-to').innerText = data.stock + ' ' + unit;
+                    })
+                    .catch(err => console.error('Error fetching dest stock:', err));
+            }
+        } else {
+            row.querySelector('.stock-from').innerText = '-';
+            row.querySelector('.stock-to').innerText = '-';
+            row.querySelector('.stock-from').dataset.stock = 0;
+        }
     }
 
     function addItemRow() {
         const row = document.createElement('div');
-        row.className = 'item-row grid grid-cols-12 gap-4 items-end bg-slate-800/30 p-4 rounded-2xl border border-white/5';
+        row.className = 'item-row bg-slate-800/30 p-6 rounded-3xl border border-white/5 relative';
         row.innerHTML = `
-            <div class="col-span-6">
-                <select name="items[${rowCount}][item_id]" onchange="updateUnitLabel(this)" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required>
-                    <option value="">Pilih Item</option>
-                    @foreach($items as $i)
-                    <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->code }} - {{ $i->name }}</option>
-                    @endforeach
-                </select>
+            <div class="grid grid-cols-12 gap-6 items-end">
+                <div class="col-span-12 md:col-span-5">
+                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Item/SKU</label>
+                    <select name="items[${rowCount}][item_id]" onchange="updateRowInfo(this)" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all item-selector" required>
+                        <option value="">Pilih Item</option>
+                        @foreach($items as $i)
+                        <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->code }} - {{ $i->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-span-6 md:col-span-3">
+                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Quantity</label>
+                    <input type="number" name="items[${rowCount}][quantity]" step="0.01" class="qty-input w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required placeholder="0.00">
+                </div>
+                <div class="col-span-4 md:col-span-2">
+                    <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Satuan</label>
+                    <input type="text" class="unit-label w-full bg-slate-900/40 border border-transparent rounded-xl py-3 px-4 text-[10px] text-slate-500 font-black uppercase outline-none" readonly value="-">
+                </div>
+                <div class="col-span-2 md:col-span-2 flex justify-center pb-1">
+                    <button type="button" onclick="this.closest('.item-row').remove()" class="p-3 text-slate-600 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
             </div>
-            <div class="col-span-3">
-                <input type="number" name="items[${rowCount}][quantity]" step="0.01" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required placeholder="0.00">
-            </div>
-            <div class="col-span-2">
-                <input type="text" class="unit-label w-full bg-slate-900/40 border border-transparent rounded-xl py-3 px-4 text-[10px] text-slate-500 font-black uppercase outline-none" readonly value="-">
-            </div>
-            <div class="col-span-1 flex justify-center">
-                <button type="button" onclick="this.closest('.item-row').remove()" class="p-3 text-slate-600 hover:text-rose-500 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            <div class="mt-4 flex gap-4">
+                <div class="px-3 py-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-2">
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Asal:</span>
+                    <span class="stock-from text-[10px] font-black text-indigo-400">-</span>
+                </div>
+                <div class="px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-2">
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Tujuan:</span>
+                    <span class="stock-to text-[10px] font-black text-emerald-400">-</span>
+                </div>
             </div>
         `;
         document.getElementById('itemRows').appendChild(row);
@@ -273,59 +363,114 @@
     }
 
     function validateAndSubmit() {
-        const fromWh = document.querySelector('select[name="from_warehouse_id"]').value;
-        const toWh = document.querySelector('select[name="to_warehouse_id"]').value;
+        const fromWh = document.getElementById('modal_from_warehouse_id').value;
+        const toWh = document.getElementById('modal_to_warehouse_id').value;
 
         if (!fromWh || !toWh) {
-            showToast('Pilih gudang asal dan tujuan!', 'error');
+            Swal.fire('PERINGATAN', 'Harap pilih gudang asal dan tujuan!', 'warning');
             return;
         }
 
         if (fromWh === toWh) {
-            showToast('Gudang asal dan tujuan tidak boleh sama!', 'warning');
+            Swal.fire('PERINGATAN', 'Gudang asal dan tujuan tidak boleh sama!', 'warning');
+            return;
+        }
+
+        // Check stock availability
+        let insufficient = false;
+        let items = [];
+        document.querySelectorAll('.item-row').forEach(row => {
+            const qtyInput = row.querySelector('.qty-input');
+            const qty = parseFloat(qtyInput.value) || 0;
+            const stockElement = row.querySelector('.stock-from');
+            const stock = parseFloat(stockElement.dataset.stock) || 0;
+            const itemSelector = row.querySelector('.item-selector');
+            const itemName = itemSelector.options[itemSelector.selectedIndex]?.text || 'Unknown Item';
+
+            if (qty > stock) {
+                insufficient = true;
+                items.push(itemName);
+            }
+        });
+
+        if (insufficient) {
+            Swal.fire({
+                title: 'STOK TIDAK MENCUKUPI',
+                html: `Stok di gudang asal tidak mencukupi untuk item: <br><b>${items.join(', ')}</b><br><br>Gunakan fitur <b>Request Item (Purchasing)</b> untuk melakukan pengadaan barang baru.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'KE REQUEST ITEM',
+                cancelButtonText: 'TETAP DI SINI',
+                confirmButtonColor: '#6366f1'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "{{ route('orders.requests.index') }}";
+                }
+            });
             return;
         }
 
         document.getElementById('requestForm').submit();
     }
 
-    function viewDetails(id) {
-        fetch(`/transactions/mutations/get-details/${id}`)
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('detRef').innerText = data.reference_no;
-                document.getElementById('detDate').innerText = new Date(data.created_at).toLocaleString();
-                document.getElementById('detFrom').innerText = data.from_warehouse.name;
-                document.getElementById('detTo').innerText = data.to_warehouse.name;
-                
-                const detItems = document.getElementById('detItems');
-                detItems.innerHTML = '';
+    async function viewDetails(id) {
+        try {
+            const response = await fetch(`{{ url('transactions/mutations/get-details') }}/${id}`);
+            if (!response.ok) throw new Error('Data tidak ditemukan');
+            
+            const data = await response.json();
+            
+            document.getElementById('detRef').innerText = data.reference_no || '-';
+            document.getElementById('detDate').innerText = data.created_at ? new Date(data.created_at).toLocaleString() : '-';
+            document.getElementById('detFrom').innerText = data.from_warehouse?.name || '-';
+            document.getElementById('detTo').innerText = data.to_warehouse?.name || '-';
+            
+            const detItems = document.getElementById('detItems');
+            detItems.innerHTML = '';
+            
+            if (data.details && data.details.length > 0) {
                 data.details.forEach(d => {
+                    const itemName = d.item?.name || 'Unknown Item';
+                    const itemCode = d.item?.code || '-';
+                    const unitName = d.item?.unit?.name || '-';
+                    const qty = parseFloat(d.quantity) || 0;
+                    
                     detItems.innerHTML += `
                         <div class="flex justify-between items-center p-4 bg-slate-800/20 rounded-xl border border-white/5">
-                            <span class="text-xs text-white font-bold">${d.item.name} <span class="text-[10px] text-slate-500 font-mono ml-2">(${d.item.code})</span></span>
-                            <span class="text-sm font-black text-indigo-400">${parseFloat(d.quantity)} <span class="text-[9px] uppercase text-slate-600 ml-1">${d.item.unit?.name || '-'}</span></span>
+                            <span class="text-xs text-white font-bold">${itemName} <span class="text-[10px] text-slate-500 font-mono ml-2">(${itemCode})</span></span>
+                            <span class="text-sm font-black text-indigo-400">${qty} <span class="text-[9px] uppercase text-slate-600 ml-1">${unitName}</span></span>
                         </div>
                     `;
                 });
-                
-                if (data.work_order) {
-                    document.getElementById('detWO').innerText = data.work_order.wo_number;
-                    document.getElementById('detWOWrapper').classList.remove('hidden');
-                } else {
-                    document.getElementById('detWOWrapper').classList.add('hidden');
-                }
+            } else {
+                detItems.innerHTML = '<p class="text-xs text-slate-500 italic p-4 text-center">Tidak ada detail item.</p>';
+            }
+            
+            if (data.work_order) {
+                document.getElementById('detWO').innerText = data.work_order.wo_number;
+                document.getElementById('detWOWrapper').classList.remove('hidden');
+            } else {
+                document.getElementById('detWOWrapper').classList.add('hidden');
+            }
 
-                if (data.note) {
-                    document.getElementById('detNote').innerText = data.note;
-                    document.getElementById('detNoteWrapper').classList.remove('hidden');
-                } else {
-                    document.getElementById('detNoteWrapper').classList.add('hidden');
-                }
+            if (data.note) {
+                document.getElementById('detNote').innerText = data.note;
+                document.getElementById('detNoteWrapper').classList.remove('hidden');
+            } else {
+                document.getElementById('detNoteWrapper').classList.add('hidden');
+            }
 
-                document.getElementById('detailsModal').classList.remove('hidden');
-                lucide.createIcons();
+            document.getElementById('detailsModal').classList.remove('hidden');
+            lucide.createIcons();
+        } catch (error) {
+            console.error('Detail Error:', error);
+            Swal.fire({
+                title: 'ERROR',
+                text: 'Gagal memuat detail: ' + error.message,
+                icon: 'error',
+                confirmButtonColor: '#6366f1'
             });
+        }
     }
 
     function closeDetails() {

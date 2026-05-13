@@ -191,7 +191,7 @@ class OrderController extends Controller {
                 }
             }
 
-            // 2. Process extra items
+            // 2. Process extra items (Bonuses)
             if ($request->extra_items) {
                 foreach ($request->extra_items as $extra) {
                     if (empty($extra['id']) || empty($extra['quantity']) || $extra['quantity'] <= 0) continue;
@@ -199,23 +199,12 @@ class OrderController extends Controller {
                     $itemId = $extra['id'];
                     $qty = $extra['quantity'];
 
-                    $detail = $po->details()->where('item_id', $itemId)->first();
-                    if ($detail) {
-                        $detail->increment('received_quantity', $qty);
-                        $detail->increment('quantity', $qty); 
-                    } else {
-                        PurchaseOrderDetail::create([
-                            'purchase_order_id' => $po->id,
-                            'item_id' => $itemId,
-                            'quantity' => $qty,
-                            'received_quantity' => $qty
-                        ]);
-                    }
-                    $this->createStockTransaction($po, $itemId, $qty, $warehouseId);
+                    // Bonuses do NOT change PO details, they only create Stock In transactions
+                    $this->createStockTransaction($po, $itemId, $qty, $warehouseId, 'Bonus Received from PO: ' . $po->po_no);
                 }
             }
 
-            // 3. Update Status
+            // 3. Update Status (Based only on original PO items)
             $totalOrdered = $po->details()->sum('quantity');
             $totalReceived = $po->details()->sum('received_quantity');
             $status = ($totalReceived >= $totalOrdered) ? 'CLOSED' : 'PARTIAL';
@@ -225,7 +214,7 @@ class OrderController extends Controller {
         return redirect()->back()->with('success', 'Materials received and stock updated.');
     }
 
-    private function createStockTransaction($po, $itemId, $qty, $warehouseId) {
+    private function createStockTransaction($po, $itemId, $qty, $warehouseId, $note = null) {
         StockTransaction::create([
             'warehouse_id' => $warehouseId,
             'item_id' => $itemId,
@@ -233,7 +222,7 @@ class OrderController extends Controller {
             'quantity' => $qty,
             'reference_no' => $po->po_no,
             'user_id' => Auth::id(),
-            'note' => 'Received from PO: ' . $po->po_no
+            'note' => $note ?? 'Received from PO: ' . $po->po_no
         ]);
     }
 }

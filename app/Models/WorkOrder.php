@@ -22,4 +22,5 @@ class WorkOrder extends Model
     public function stages() { return $this->hasMany(WorkOrderStage::class)->orderBy('sequence'); }
     public function outputs() { return $this->hasMany(ProductionOutput::class); }
     public function transfers() { return $this->hasMany(ProductionTransfer::class); }
+    public function mutations() { return $this->hasMany(StockMutation::class); }
 }

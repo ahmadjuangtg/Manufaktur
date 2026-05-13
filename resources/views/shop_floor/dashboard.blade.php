@@ -112,24 +112,49 @@
 
                         <!-- Material Checklist -->
                         <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div class="bg-slate-900/50 rounded-3xl p-6 border border-white/5">
-                                <h5 class="text-white text-[10px] font-black uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <i data-lucide="package" class="w-4 h-4 text-amber-400"></i> Materials Checklist
-                                </h5>
+                            <div class="bg-slate-900/50 rounded-3xl p-6 border border-white/5 relative overflow-hidden">
+                                @php 
+                                    $completedMutations = $active->workOrder->mutations->where('status', 'COMPLETED');
+                                    $hasReceivedMaterial = $completedMutations->count() > 0;
+                                    $pendingMutation = $active->workOrder->mutations->whereIn('status', ['PENDING', 'APPROVED', 'SENDING'])->first();
+                                @endphp
+
+                                <div class="flex justify-between items-center mb-4">
+                                    <h5 class="text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <i data-lucide="package" class="w-4 h-4 text-amber-400"></i> Materials Checklist
+                                    </h5>
+                                    @if($pendingMutation)
+                                        <span class="text-[8px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 uppercase animate-pulse">Mutation: {{ $pendingMutation->status }}</span>
+                                    @elseif($hasReceivedMaterial)
+                                        <span class="text-[8px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">Material Received</span>
+                                    @endif
+                                </div>
+
                                 <div class="space-y-3">
-                                    @foreach($active->items as $item)
-                                    <div class="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5">
-                                        <input type="checkbox" class="material-checkbox w-4 h-4 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500" onchange="validateChecklist()">
+                                    @forelse($active->items as $item)
+                                    <div class="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5 {{ !$hasReceivedMaterial ? 'opacity-40 grayscale cursor-not-allowed' : '' }}">
+                                        <input type="checkbox" class="material-checkbox w-4 h-4 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500" 
+                                            {{ !$hasReceivedMaterial ? 'disabled' : '' }}
+                                            onchange="validateChecklist()">
                                         <div class="flex-1">
                                             <p class="text-xs font-bold text-white">{{ $item->item->name }}</p>
-                                            <p class="text-[9px] text-slate-500 uppercase">{{ number_format($item->quantity_total, 2) }} {{ $item->item->unit->name }}</p>
+                                            <p class="text-[9px] text-slate-500 uppercase">{{ number_format($item->quantity, 2) }} {{ $item->item->unit->name }}</p>
                                         </div>
                                     </div>
-                                    @endforeach
+                                    @empty
+                                        <p class="text-[9px] text-slate-500 italic text-center py-4">No materials required for this stage.</p>
+                                    @endforelse
                                 </div>
-                                <a href="{{ route('mutations.request.index', ['work_order_id' => $active->work_order_id]) }}" class="mt-6 w-full py-3 bg-amber-600/10 hover:bg-amber-600/20 text-amber-500 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-amber-500/10 flex items-center justify-center gap-2">
-                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Request to Warehouse
-                                </a>
+
+                                @if(!$hasReceivedMaterial)
+                                <button type="button" onclick="openRequestModal({{ $active->id }})" class="mt-6 w-full py-3 bg-amber-600/10 hover:bg-amber-600 text-amber-500 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-amber-500/20 flex items-center justify-center gap-2">
+                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Request Material
+                                </button>
+                                @else
+                                <div class="mt-6 p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 text-center">
+                                    <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Material has been verified</p>
+                                </div>
+                                @endif
                             </div>
 
                             <div class="bg-slate-900/50 rounded-3xl p-6 border border-white/5">
@@ -228,7 +253,262 @@
     </div>
 </div>
 
+<!-- Material Request Modal -->
+<div id="requestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-4xl rounded-[2.5rem] flex flex-col max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-indigo-600/20 rounded-2xl flex items-center justify-center text-indigo-400">
+                    <i data-lucide="file-plus" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-white tracking-tight">Buat Permintaan Mutasi</h3>
+                    <p class="text-xs text-slate-500 font-bold uppercase tracking-widest mt-0.5">Lengkapi detail pemindahan stok</p>
+                </div>
+            </div>
+            <button onclick="closeRequestModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-10 modal-scroll bg-[#0f172a]/30">
+            <form id="requestForm" action="" method="POST" class="space-y-8">
+                @csrf
+                <div class="grid grid-cols-1 gap-8">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Terkait Work Order</label>
+                        <input type="text" id="modal_wo_number" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" readonly value="Loading...">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Asal (Pengirim)*</label>
+                        <select name="from_warehouse_id" id="modal_from_warehouse_id" onchange="checkWarehouses(this); document.querySelectorAll('.item-selector').forEach(s => updateRowInfo(s));" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
+                            <option value="">Pilih Gudang Asal</option>
+                            @foreach($allWarehouses as $w)
+                            <option value="{{ $w->id }}">{{ $w->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Tujuan (Penerima)*</label>
+                        <select name="to_warehouse_id" id="modal_to_warehouse_id" onchange="checkWarehouses(this); document.querySelectorAll('.item-selector').forEach(s => updateRowInfo(s));" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
+                            <option value="">Pilih Gudang Tujuan</option>
+                            @foreach($allWarehouses as $w)
+                            <option value="{{ $w->id }}">{{ $w->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">Item yang Diminta*</label>
+                        <button type="button" onclick="addRequestItemRow()" class="text-indigo-400 hover:text-indigo-300 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 transition-colors">
+                            <i data-lucide="plus" class="w-3 h-3"></i> Tambah Item
+                        </button>
+                    </div>
+                    
+                    <div id="requestItemBody" class="space-y-3">
+                        <!-- Dynamic rows here -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Catatan Tambahan (Opsional)</label>
+                    <textarea name="note" rows="3" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all resize-none" placeholder="Alasan mutasi atau instruksi khusus..."></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="p-10 border-t border-white/5 bg-slate-800/30 flex justify-end gap-6 shrink-0">
+            <button type="button" onclick="closeRequestModal()" class="text-xs font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors">Batalkan</button>
+            <button type="button" onclick="validateAndSubmit()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-indigo-500/20 active:scale-[0.98] transition-all">
+                Kirim Permintaan
+            </button>
+        </div>
+    </div>
+</div>
+
+<template id="requestItemTemplate">
+    <div class="item-row bg-slate-800/30 p-6 rounded-3xl border border-white/5 relative">
+        <div class="grid grid-cols-12 gap-6 items-end">
+            <div class="col-span-12 md:col-span-5">
+                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Item/SKU</label>
+                <select name="items[INDEX][item_id]" onchange="updateRowInfo(this)" class="w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all item-selector" required>
+                    <option value="">Pilih Item</option>
+                    @foreach($allItems as $i)
+                    <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->code }} - {{ $i->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-span-6 md:col-span-3">
+                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Quantity</label>
+                <input type="number" name="items[INDEX][quantity]" step="0.01" class="qty-input w-full bg-slate-900/80 border border-white/5 rounded-xl py-3 px-4 text-xs text-white outline-none focus:border-indigo-500 transition-all" required placeholder="0.00">
+            </div>
+            <div class="col-span-4 md:col-span-2">
+                <label class="text-[9px] text-slate-500 font-bold uppercase mb-2 block ml-1">Satuan</label>
+                <input type="text" class="unit-label w-full bg-slate-900/40 border border-transparent rounded-xl py-3 px-4 text-[10px] text-slate-500 font-black uppercase outline-none" readonly value="-">
+            </div>
+            <div class="col-span-2 md:col-span-2 flex justify-center pb-1">
+                <button type="button" onclick="this.closest('.item-row').remove()" class="p-3 text-slate-600 hover:text-rose-500 transition-colors btn-remove"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <div class="mt-4 flex gap-4">
+            <div class="px-3 py-1.5 rounded-lg bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-2">
+                <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Asal:</span>
+                <span class="stock-from text-[10px] font-black text-indigo-400">-</span>
+            </div>
+            <div class="px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-2">
+                <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stok Tujuan:</span>
+                <span class="stock-to text-[10px] font-black text-emerald-400">-</span>
+            </div>
+        </div>
+    </div>
+</template>
+
 <script>
+    let requestItemIndex = 0;
+
+    async function openRequestModal(stageId) {
+        document.getElementById('requestForm').action = `/shop-floor/material-request/${stageId}`;
+        const tbody = document.getElementById('requestItemBody');
+        tbody.innerHTML = '<div class="p-8 text-center text-slate-500"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><span class="text-[10px] font-black uppercase tracking-widest">Loading Items...</span></div>';
+        
+        document.getElementById('requestModal').classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+
+        try {
+            const response = await fetch(`/shop-floor/get-stage-items/${stageId}`);
+            const data = await response.json();
+            
+            // Set WO Number automatically
+            document.getElementById('modal_wo_number').value = data.wo_number;
+
+            tbody.innerHTML = '';
+            requestItemIndex = 0;
+            
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(item => {
+                    addRequestItemRow(item);
+                });
+            } else {
+                addRequestItemRow();
+            }
+
+        } catch (error) {
+            console.error('Error fetching stage items:', error);
+            tbody.innerHTML = '<div class="p-8 text-center text-rose-400 text-[10px] uppercase font-bold">Gagal memuat material</div>';
+        }
+    }
+
+    function addRequestItemRow(data = null) {
+        const tbody = document.getElementById('requestItemBody');
+        const template = document.getElementById('requestItemTemplate');
+        const clone = template.content.cloneNode(true);
+        const row = clone.querySelector('.item-row');
+        const index = requestItemIndex++;
+        
+        // Update names
+        row.querySelectorAll('[name*="INDEX"]').forEach(el => {
+            el.name = el.name.replace('INDEX', index);
+        });
+
+        const select = row.querySelector('.item-selector');
+        const qtyInput = row.querySelector('.qty-input');
+        const unitDisplay = row.querySelector('.unit-label');
+        const removeBtn = row.querySelector('.btn-remove');
+
+        if (data) {
+            select.value = data.id;
+            if (parseFloat(data.quantity) > 0) {
+                qtyInput.value = data.quantity;
+            }
+            unitDisplay.value = data.unit;
+            
+            // Lock the selection for required materials
+            select.style.pointerEvents = 'none';
+            select.tabIndex = -1;
+            removeBtn.remove(); // Can't remove required materials
+            updateRowInfo(select);
+        }
+
+        tbody.appendChild(clone);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function checkWarehouses(select) {
+        const fromWh = document.getElementById('modal_from_warehouse_id').value;
+        const toWh = document.getElementById('modal_to_warehouse_id').value;
+
+        if (fromWh && toWh && fromWh === toWh) {
+            Swal.fire('PERINGATAN', 'Gudang asal dan tujuan tidak boleh sama!', 'warning');
+            select.value = ''; 
+        }
+    }
+
+    function updateRowInfo(select) {
+        const row = select.closest('.item-row');
+        const item_id = select.value;
+        const from_wh = document.getElementById('modal_from_warehouse_id').value;
+        const to_wh = document.getElementById('modal_to_warehouse_id').value;
+        const unit = select.options[select.selectedIndex]?.getAttribute('data-unit') || '-';
+        
+        row.querySelector('.unit-label').value = unit;
+        
+        const stockFromEl = row.querySelector('.stock-from');
+        const stockToEl = row.querySelector('.stock-to');
+
+        if (item_id) {
+            if (from_wh) {
+                fetch(`{{ route('opname.get_stock') }}?item_id=${item_id}&warehouse_id=${from_wh}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        stockFromEl.innerText = data.stock + ' ' + unit;
+                        stockFromEl.dataset.stock = data.stock;
+                    });
+            }
+            if (to_wh) {
+                fetch(`{{ route('opname.get_stock') }}?item_id=${item_id}&warehouse_id=${to_wh}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        stockToEl.innerText = data.stock + ' ' + unit;
+                    });
+            }
+        } else {
+            stockFromEl.innerText = '-';
+            stockToEl.innerText = '-';
+            stockFromEl.dataset.stock = 0;
+        }
+    }
+
+    function validateAndSubmit() {
+        const fromWh = document.getElementById('modal_from_warehouse_id').value;
+        const toWh = document.getElementById('modal_to_warehouse_id').value;
+
+        if (!fromWh || !toWh) {
+            Swal.fire('PERINGATAN', 'Harap pilih gudang asal dan tujuan!', 'warning');
+            return;
+        }
+
+        if (fromWh === toWh) {
+            Swal.fire('PERINGATAN', 'Gudang asal dan tujuan tidak boleh sama!', 'warning');
+            return;
+        }
+
+        const itemsCount = document.querySelectorAll('#requestItemBody .item-row').length;
+        if(itemsCount === 0 || (itemsCount === 1 && document.querySelector('.item-selector').value === '')) {
+            Swal.fire('PERINGATAN', 'Harap pilih minimal 1 item material!', 'warning');
+            return;
+        }
+
+        document.getElementById('requestForm').submit();
+    }
+
+    function closeRequestModal() {
+        document.getElementById('requestModal').classList.add('hidden');
+    }
+
     // Live clock
     setInterval(() => {
         const now = new Date();

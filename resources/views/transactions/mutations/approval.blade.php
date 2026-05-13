@@ -2,14 +2,35 @@
 
 @section('content')
 <div class="space-y-8">
-    <div class="flex justify-between items-end mb-4">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
         <div>
             <h3 class="text-2xl font-black text-white uppercase tracking-tight">Authorization Center</h3>
             <p class="text-slate-500 text-sm font-medium mt-1">Review and validate warehouse stock transfer requests</p>
         </div>
-        <div class="flex gap-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <form action="{{ route('mutations.approval.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
+                <select name="from_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Asal: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('from_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="to_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Tujuan: Semua</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('to_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+
+                @if(request()->anyFilled(['from_warehouse_id', 'to_warehouse_id']))
+                <a href="{{ route('mutations.approval.index') }}" class="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all" title="Reset Filter">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </a>
+                @endif
+            </form>
             <div class="px-6 py-3 bg-slate-800/50 rounded-2xl border border-white/5 flex items-center gap-3">
-                <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
+                <span class="w-3 h-3 rounded-full bg-amber-500 {{ $data->count() > 0 ? 'animate-pulse' : '' }}"></span>
                 <span class="text-xs font-black text-white uppercase tracking-widest">{{ $data->count() }} Pending Requests</span>
             </div>
         </div>
@@ -101,10 +122,17 @@
                     </div>
 
                     <div class="mt-12 pt-8 border-t border-white/5 flex justify-end items-center gap-6">
-                        <form action="{{ route('mutations.approval.reject', $m->id) }}" method="POST">
+                        <button type="button" 
+                            onclick="rejectMutation({{ $m->id }})"
+                            class="text-xs font-black text-slate-500 hover:text-rose-500 uppercase tracking-widest transition-colors px-4 py-2">
+                            Reject Request
+                        </button>
+                        
+                        <form id="reject-form-{{ $m->id }}" action="{{ route('mutations.approval.reject', $m->id) }}" method="POST" class="hidden">
                             @csrf
-                            <button type="submit" class="text-xs font-black text-slate-500 hover:text-rose-500 uppercase tracking-widest transition-colors px-4 py-2">Reject Request</button>
+                            <input type="hidden" name="rejection_reason" id="reason-{{ $m->id }}">
                         </form>
+
                         <form action="{{ route('mutations.approval.approve', $m->id) }}" method="POST">
                             @csrf
                             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all">
@@ -127,4 +155,36 @@
     </div>
     @endif
 </div>
+
+<script>
+    function rejectMutation(id) {
+        Swal.fire({
+            title: 'REJECT PERMINTAAN MUTASI',
+            text: 'Harap berikan alasan penolakan untuk mutasi ini:',
+            input: 'textarea',
+            inputPlaceholder: 'Tuliskan alasan reject di sini...',
+            inputAttributes: {
+                'aria-label': 'Tuliskan alasan reject di sini'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'REJECT SEKARANG',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#e11d48'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (!result.value) {
+                    Swal.fire({
+                        title: 'DIBUTUHKAN ALASAN',
+                        text: 'Alasan penolakan wajib diisi!',
+                        icon: 'error',
+                        confirmButtonColor: '#6366f1'
+                    });
+                    return;
+                }
+                document.getElementById('reason-' + id).value = result.value;
+                document.getElementById('reject-form-' + id).submit();
+            }
+        });
+    }
+</script>
 @endsection

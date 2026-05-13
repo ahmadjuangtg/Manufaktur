@@ -11,17 +11,18 @@ use App\Models\StockMutation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Models\Warehouse;
+use App\Models\Item;
 use Carbon\Carbon;
 
 class ShopFloorController extends Controller
 {
     public function index()
     {
-        // Tuning: Selective column loading for production stages
         $stages = WorkOrderStage::with([
                 'workOrder' => function($q) {
                     $q->select('id', 'wo_number', 'customer_id', 'status')
-                      ->with('customer:id,name');
+                      ->with(['customer:id,name', 'mutations']);
                 },
                 'machine:id,name',
                 'machine.steps:id,machine_id,name',
@@ -35,9 +36,11 @@ class ShopFloorController extends Controller
             ->orderBy('sequence')
             ->get();
             
-        $machines = Machine::select('id', 'name', 'code', 'is_active')->where('is_active', true)->get();
+        $machines = Machine::where('is_active', true)->get();
+        $allWarehouses = Warehouse::all();
+        $allItems = Item::with('unit')->get();
             
-        return view('shop_floor.dashboard', compact('stages', 'machines'));
+        return view('shop_floor.dashboard', compact('stages', 'machines', 'allWarehouses', 'allItems'));
     }
 
     public function startStage($id)
@@ -150,5 +153,50 @@ class ShopFloorController extends Controller
         });
 
         return redirect()->back()->with('success', 'Tahapan produksi selesai.');
+    }
+    public function storeMaterialRequest(Request $request, $stageId)
+    {
+        $request->validate([
+            'from_warehouse_id' => 'required|exists:warehouses,id',
+            'to_warehouse_id' => 'required|exists:warehouses,id|different:from_warehouse_id',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+        ]);
+
+        $stage = WorkOrderStage::with('workOrder')->findOrFail($stageId);
+
+        try {
+            $inventoryService = app(\App\Services\InventoryService::class);
+            $inventoryService->createMutationRequest([
+                'work_order_id' => $stage->work_order_id,
+                'from_warehouse_id' => $request->from_warehouse_id,
+                'to_warehouse_id' => $request->to_warehouse_id,
+                'items' => $request->items,
+                'note' => 'Requested from Shop Floor Dashboard for WO: ' . $stage->workOrder->wo_number
+            ]);
+
+            return redirect()->back()->with('success', 'Permintaan mutasi material berhasil dibuat.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal membuat permintaan: ' . $e->getMessage());
+        }
+    }
+
+    public function getStageItems($id)
+    {
+        $stage = WorkOrderStage::with('items.item.unit')->findOrFail($id);
+        $items = $stage->items()->where('type', 'input')->get()->map(function($i) {
+            return [
+                'id' => $i->item_id,
+                'name' => $i->item->name,
+                'code' => $i->item->code,
+                'quantity' => $i->quantity_total > 0 ? $i->quantity_total : ($i->quantity ?? 0),
+                'unit' => $i->item->unit->name ?? 'UNIT'
+            ];
+        });
+        return response()->json([
+            'wo_number' => $stage->workOrder->wo_number,
+            'items' => $items
+        ]);
     }
 }

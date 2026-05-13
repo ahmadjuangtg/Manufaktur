@@ -70,7 +70,7 @@ class ProductionController extends Controller
 
         try {
             $this->productionService->storeWorkOrder($request->all());
-            return redirect()->route('production.work-orders.index')->with('success', 'Work Order created successfully.');
+            return redirect()->route('production.work_orders.index')->with('success', 'Work Order created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->withInput()->with('error', 'Error: ' . $e->getMessage());
         }
@@ -85,6 +85,26 @@ class ProductionController extends Controller
     public function destroy($id)
     {
         WorkOrder::findOrFail($id)->delete();
-        return redirect()->route('production.work-orders.index')->with('success', 'Work Order deleted successfully.');
+        return redirect()->route('production.work_orders.index')->with('success', 'Work Order deleted successfully.');
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|string'
+        ]);
+
+        try {
+            $this->productionService->updateStatus($id, $request->status);
+            return redirect()->back()->with('success', 'Work Order status updated.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function getTemplate($id)
+    {
+        $template = ProductionTemplate::with(['stages.machine', 'stages.items.item', 'products.item'])->findOrFail($id);
+        return response()->json($template);
     }
 }

@@ -16,17 +16,28 @@
     </div>
 
     <!-- Product Summary Header -->
-    <div class="glass-card p-10 rounded-[2.5rem] border border-white/5 bg-slate-900/40 mb-10 flex flex-col md:flex-row justify-between items-center gap-8">
-        <div>
+    <div class="glass-card p-10 rounded-[2.5rem] border border-white/5 bg-slate-900/40 mb-10 flex flex-col md:flex-row justify-between items-start gap-8">
+        <div class="flex-1">
             <h2 class="text-3xl font-black text-white leading-tight">{{ $item->name }}</h2>
-            <div class="flex items-center gap-4 mt-2">
+            <div class="flex items-center gap-4 mt-2 mb-6">
                 <span class="text-xs text-slate-500 font-bold uppercase tracking-[0.2em]">SKU: {{ $item->code }}</span>
                 <span class="w-1 h-1 bg-slate-700 rounded-full"></span>
                 <span class="text-xs text-slate-500 font-bold uppercase tracking-[0.2em]">Satuan: {{ $item->unit->name ?? '-' }}</span>
             </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                @foreach($warehouse_stock as $ws)
+                <div class="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{{ $ws->name }}</p>
+                    <p class="text-sm font-black {{ $ws->total > 0 ? 'text-indigo-400' : 'text-slate-500' }}">
+                        {{ number_format($ws->total) }} <span class="text-[9px] text-slate-600 ml-0.5">{{ $item->unit->name ?? '-' }}</span>
+                    </p>
+                </div>
+                @endforeach
+            </div>
         </div>
-        <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-3xl p-8 flex flex-col items-end min-w-[200px]">
-            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Stok Saat Ini</p>
+        <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-3xl p-8 flex flex-col items-end min-w-[200px] self-center">
+            <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Stok Saat Ini</p>
             <div class="flex items-baseline gap-2">
                 <span class="text-5xl font-black {{ $current_stock > 0 ? 'text-emerald-500' : ($current_stock < 0 ? 'text-rose-500' : 'text-slate-400') }}">{{ number_format($current_stock) }}</span>
                 <span class="text-xs font-black text-slate-500 uppercase">{{ $item->unit->name ?? '-' }}</span>
@@ -39,6 +50,7 @@
             <thead>
                 <tr class="bg-slate-800/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
                     <th class="px-8 py-5">Tanggal</th>
+                    <th class="px-8 py-5">Gudang</th>
                     <th class="px-8 py-5 text-center">Masuk</th>
                     <th class="px-8 py-5 text-center">Keluar</th>
                     <th class="px-8 py-5 text-center">Satuan</th>
@@ -63,6 +75,9 @@
                         <div class="text-xs text-white font-bold">{{ $t->created_at->format('d M Y') }}</div>
                         <div class="text-[10px] text-slate-500 font-mono">{{ $t->created_at->format('H:i') }}</div>
                     </td>
+                    <td class="px-8 py-5">
+                        <div class="text-xs text-indigo-400 font-black uppercase tracking-wider">{{ $t->warehouse->name }}</div>
+                    </td>
                     <td class="px-8 py-5 text-center">
                         @if($t->type == 'IN')
                         <span class="text-emerald-500 font-black text-sm">+{{ number_format($t->quantity) }}</span>
@@ -79,8 +94,8 @@
                     </td>
                     <td class="px-8 py-5 text-center text-[10px] text-slate-500 font-bold uppercase">{{ $item->unit->name ?? '-' }}</td>
                     <td class="px-8 py-5">
-                        <div class="text-xs text-slate-300 font-bold uppercase tracking-tight">{{ $t->reference_no }}</div>
-                        <div class="text-[10px] text-slate-500 italic mt-1 line-clamp-1">{{ $t->note ?? '-' }}</div>
+                        <div class="text-sm text-slate-200 font-black uppercase tracking-tight">{{ $t->reference_no }}</div>
+                        <div class="text-xs text-slate-400 font-bold italic mt-1 line-clamp-1">{{ $t->note ?? '-' }}</div>
                     </td>
                     <td class="px-8 py-5 text-right font-black text-slate-400 text-sm bg-white/5">
                         {{ number_format($t->running_balance) }}

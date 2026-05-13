@@ -1,6 +1,17 @@
 @extends('layouts.app', ['title' => 'Create Work Order'])
 
 @section('content')
+<style>
+    /* Hide number input arrows */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>
 <div class="w-full">
     <form action="{{ route('production.work_orders.store') }}" method="POST" id="woForm" class="space-y-8">
         @csrf
@@ -247,12 +258,12 @@
         </div>
         <div class="md:col-span-3">
             <div class="flex items-center gap-2 bg-slate-800 rounded-lg px-3">
-                <input type="number" step="0.01" name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][quantity_per_batch]" required class="w-full bg-transparent border-none py-2 text-[10px] text-white outline-none" placeholder="0.00">
+                <input type="number" step="0.01" name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][quantity]" required class="w-full bg-transparent border-none py-2 text-[10px] text-white outline-none" placeholder="0.00">
                 <input type="text" class="w-12 bg-transparent border-none text-[9px] text-indigo-400 font-black uppercase outline-none unit-display" readonly placeholder="Unit">
             </div>
         </div>
         <div class="md:col-span-2">
-            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][type]" class="w-full bg-slate-800 border-transparent rounded-lg px-2 py-2 text-[9px] text-indigo-400 font-bold uppercase outline-none">
+            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][type]" class="w-full bg-slate-800 border-transparent rounded-lg px-2 py-2 text-[9px] text-indigo-400 font-bold uppercase outline-none stage-item-type">
                 <option value="input">INPUT</option>
                 <option value="output">OUTPUT</option>
             </select>
@@ -270,6 +281,70 @@
     let productCount = 1;
     let stageCount = 0;
 
+    // --- New Features & Validations ---
+
+    function updateProductOptions() {
+        const selectedIds = Array.from(document.querySelectorAll('.product-row select'))
+            .map(select => select.value)
+            .filter(id => id !== "");
+
+        document.querySelectorAll('.product-row select').forEach(select => {
+            const currentValue = select.value;
+            const options = select.querySelectorAll('option');
+            
+            options.forEach(option => {
+                if (option.value === "") return;
+                
+                if (selectedIds.includes(option.value) && option.value !== currentValue) {
+                    option.disabled = true;
+                    option.style.display = 'none';
+                } else {
+                    option.disabled = false;
+                    option.style.display = '';
+                }
+            });
+        });
+    }
+
+    document.getElementById('woForm').addEventListener('submit', function(e) {
+        const stages = document.querySelectorAll('.stage-block');
+        let isValid = true;
+        let errorMessage = "";
+
+        if (stages.length === 0) {
+            isValid = false;
+            errorMessage = "Minimal harus ada 1 tahapan produksi.";
+        }
+
+        stages.forEach((stage, index) => {
+            const types = Array.from(stage.querySelectorAll('.stage-item-type')).map(s => s.value);
+            const hasInput = types.includes('input');
+            const hasOutput = types.includes('output');
+
+            if (!hasInput || !hasOutput) {
+                isValid = false;
+                const stageName = stage.querySelector('input[name*="[name]"]').value || `Tahapan ${index + 1}`;
+                errorMessage = `Tahapan "${stageName}" harus memiliki minimal 1 INPUT dan 1 OUTPUT.`;
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validasi Gagal',
+                    text: errorMessage,
+                    background: '#1e293b',
+                    color: '#fff',
+                    confirmButtonColor: '#4f46e5'
+                });
+            } else {
+                alert(errorMessage);
+            }
+        }
+    });
+
     // --- Core Functions ---
 
     function addProductRow(data = null) {
@@ -281,7 +356,7 @@
             <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-white/[0.02] p-4 rounded-2xl border border-white/5 group product-row" data-index="${index}">
                 <div class="md:col-span-7 space-y-2">
                     <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">Pilih Produk (Finished Good)</label>
-                    <select name="products[${index}][item_id]" required class="w-full bg-slate-900 border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none">
+                    <select name="products[${index}][item_id]" required class="w-full bg-slate-900 border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none product-select">
                         <option value="">-- Pilih Produk --</option>
                         @foreach($products as $product)
                         <option value="{{ $product->id }}" data-unit="{{ $product->unit->name ?? '' }}" class="text-white bg-slate-800">{{ $product->code }} - {{ $product->name }}</option>
@@ -317,6 +392,7 @@
             if (qtyInput) qtyInput.value = data.quantity || 1;
         }
 
+        updateProductOptions();
         if (typeof lucide !== 'undefined') lucide.createIcons();
         updateAllDurations();
     }
@@ -385,7 +461,7 @@
 
             if (data) {
                 const select = itemRow.querySelector('select[name*="[item_id]"]');
-                const qtyInp = itemRow.querySelector('input[name*="[quantity_per_batch]"]');
+                const qtyInp = itemRow.querySelector('input[name*="[quantity]"]');
                 const typeSel = itemRow.querySelector('select[name*="[type]"]');
                 
                 if (select) {
@@ -396,7 +472,7 @@
                         if (unitDisp) unitDisp.value = selected.dataset.unit || '';
                     }
                 }
-                if (qtyInp) qtyInp.value = data.quantity_per_batch || 0;
+                if (qtyInp) qtyInp.value = data.quantity || data.quantity_per_batch || 0;
                 if (typeSel) typeSel.value = data.type || 'input';
             }
 
@@ -483,14 +559,12 @@
             totalHours += hours;
 
             // 2. Determine Start Time
-            // If this is the FIRST stage, or if we are cascading from a change
             let startTime;
             if (idx === 0 && (!startInput.value || sourceElement?.id === 'production_date')) {
                 startTime = nextStartTime;
                 if (startInput) startInput.value = toLocalISO(startTime);
             } else if (startInput.value) {
                 startTime = new Date(startInput.value);
-                // If the user changed the PREVIOUS stage, and this stage's start is now BEFORE the previous end, update it
                 if (sourceElement && startTime < nextStartTime) {
                     startTime = nextStartTime;
                     startInput.value = toLocalISO(startTime);
@@ -500,11 +574,9 @@
                 if (startInput) startInput.value = toLocalISO(startTime);
             }
 
-            // 3. Calculate End Time
             const endTime = new Date(startTime.getTime() + (hours * 3600000));
             if (endDisplay) endDisplay.value = toLocalISO(endTime);
 
-            // Update next start time for cascading
             nextStartTime = endTime;
         });
     }
@@ -574,6 +646,9 @@
                 const unitDisp = row.querySelector('.unit-display');
                 if (unitDisp) unitDisp.value = selected ? (selected.dataset.unit || '') : '';
             }
+            if (e.target.closest('.product-row')) {
+                updateProductOptions();
+            }
         }
 
         if (e.target.matches('select[name*="[machine_id]"]') || 
@@ -600,6 +675,7 @@
     document.addEventListener('click', function(e) {
         if (e.target.closest('.remove-row')) {
             e.target.closest('.product-row').remove();
+            updateProductOptions();
             updateAllDurations(e.target);
         }
         if (e.target.closest('.remove-stage')) {
@@ -617,6 +693,8 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof lucide !== 'undefined') lucide.createIcons();
+        updateProductOptions();
+        calculateFinishDate();
     });
 </script>
 @endsection

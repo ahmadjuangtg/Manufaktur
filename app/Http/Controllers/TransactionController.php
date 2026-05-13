@@ -60,13 +60,34 @@ class TransactionController extends Controller
     }
 
     // Stock Opname
-    public function indexOpname()
+    public function indexOpname(Request $request)
     {
+        $warehouse_id = $request->warehouse_id;
+        $status = $request->status;
+        $sort_by = $request->sort_by ?? 'created_at';
+        $sort_order = $request->sort_order ?? 'desc';
+
         $data = StockOpname::with(['item', 'warehouse', 'user', 'approver'])
-            ->latest()
-            ->paginate(20)
-            ->withQueryString();
-        return view('transactions.opname.index', compact('data'));
+            ->when($warehouse_id, function($q) use ($warehouse_id) {
+                $q->where('warehouse_id', $warehouse_id);
+            })
+            ->when($status, function($q) use ($status) {
+                $q->where('status', $status);
+            });
+
+        // Handle sorting
+        if ($sort_by === 'warehouse') {
+            $data->join('warehouses', 'stock_opnames.warehouse_id', '=', 'warehouses.id')
+                 ->orderBy('warehouses.name', $sort_order)
+                 ->select('stock_opnames.*');
+        } else {
+            $data->orderBy('stock_opnames.' . $sort_by, $sort_order);
+        }
+
+        $data = $data->paginate(20)->withQueryString();
+        $warehouses = Warehouse::all();
+        
+        return view('transactions.opname.index', compact('data', 'warehouses'));
     }
 
     public function createOpname()
@@ -121,14 +142,20 @@ class TransactionController extends Controller
         return redirect()->route('opname.index')->with('success', 'Permintaan opname berhasil diajukan.');
     }
 
-    public function indexOpnameApproval()
+    public function indexOpnameApproval(Request $request)
     {
+        $warehouse_id = $request->warehouse_id;
+
         $data = StockOpname::with(['item.unit', 'warehouse', 'user'])
             ->where('status', 'PENDING')
+            ->when($warehouse_id, function($q) use ($warehouse_id) {
+                $q->where('warehouse_id', $warehouse_id);
+            })
             ->latest()
             ->get();
             
-        return view('transactions.opname.approval', compact('data'));
+        $warehouses = Warehouse::all();
+        return view('transactions.opname.approval', compact('data', 'warehouses'));
     }
 
     public function approveOpname($id)
@@ -162,8 +189,12 @@ class TransactionController extends Controller
         return redirect()->back()->with('success', 'Stock opname disetujui.');
     }
 
-    public function rejectOpname($id)
+    public function rejectOpname(Request $request, $id)
     {
+        $request->validate([
+            'rejection_reason' => 'required|string|min:5'
+        ]);
+
         $opname = StockOpname::findOrFail($id);
         if ($opname->status !== 'PENDING') {
             return redirect()->back()->with('error', 'Transaksi ini sudah diproses.');
@@ -171,6 +202,7 @@ class TransactionController extends Controller
 
         $opname->update([
             'status' => 'REJECTED',
+            'rejection_reason' => $request->rejection_reason,
             'approved_by' => Auth::id(),
             'approved_at' => now()
         ]);
@@ -196,7 +228,14 @@ class TransactionController extends Controller
                 ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
                 ->value('total') ?? 0;
 
-            return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock'));
+            $warehouse_stock = StockTransaction::where('item_id', $item_id)
+                ->join('warehouses', 'stock_transactions.warehouse_id', '=', 'warehouses.id')
+                ->select('warehouses.name')
+                ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
+                ->groupBy('warehouses.id', 'warehouses.name')
+                ->get();
+
+            return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock', 'warehouse_stock'));
         }
 
         // Optimized with single aggregate query to avoid N+1

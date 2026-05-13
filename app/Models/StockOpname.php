@@ -13,6 +13,7 @@ class StockOpname extends Model
         'physical_qty', 
         'difference', 
         'status', 
+        'rejection_reason',
         'note', 
         'user_id', 
         'approved_by', 

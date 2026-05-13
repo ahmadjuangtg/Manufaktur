@@ -2,10 +2,25 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-end mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
         <div>
             <h3 class="text-xl font-black text-white uppercase tracking-tight">Stock Opname Authorization</h3>
             <p class="text-slate-400 text-sm italic">Review and validate inventory adjustments</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <form action="{{ route('opname.approval.index') }}" method="GET" class="flex items-center gap-3">
+                <select name="warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-xs font-bold text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="">Semua Gudang</option>
+                    @foreach($warehouses as $w)
+                    <option value="{{ $w->id }}" {{ request('warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+                @if(request('warehouse_id'))
+                <a href="{{ route('opname.approval.index') }}" class="p-2 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all" title="Reset Filter">
+                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </a>
+                @endif
+            </form>
         </div>
     </div>
 
@@ -43,10 +58,17 @@
                         @endif
                     </td>
                     <td class="px-8 py-5 text-right space-x-2">
-                        <form action="{{ route('opname.reject', $o->id) }}" method="POST" class="inline">
+                        <button type="button" 
+                            onclick="rejectOpname({{ $o->id }})"
+                            class="p-2 bg-slate-800 rounded-lg text-slate-500 hover:text-rose-500 transition-all">
+                            <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        </button>
+                        
+                        <form id="reject-form-{{ $o->id }}" action="{{ route('opname.reject', $o->id) }}" method="POST" class="hidden">
                             @csrf
-                            <button type="submit" class="p-2 bg-slate-800 rounded-lg text-slate-500 hover:text-rose-500 transition-all"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
+                            <input type="hidden" name="rejection_reason" id="reason-{{ $o->id }}">
                         </form>
+
                         <form action="{{ route('opname.approve', $o->id) }}" method="POST" class="inline">
                             @csrf
                             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">
@@ -62,4 +84,35 @@
         </table>
     </div>
 </div>
+
+<script>
+    function rejectOpname(id) {
+        Swal.fire({
+            title: 'REJECT STOCK OPNAME',
+            text: 'Harap berikan alasan penolakan untuk stock opname ini:',
+            input: 'textarea',
+            inputPlaceholder: 'Tuliskan alasan reject di sini...',
+            inputAttributes: {
+                'aria-label': 'Tuliskan alasan reject di sini'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'REJECT SEKARANG',
+            cancelButtonText: 'BATAL',
+            confirmButtonColor: '#e11d48',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Alasan reject wajib diisi!'
+                }
+                if (value.length < 5) {
+                    return 'Alasan reject minimal 5 karakter!'
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('reason-' + id).value = result.value;
+                document.getElementById('reject-form-' + id).submit();
+            }
+        });
+    }
+</script>
 @endsection
