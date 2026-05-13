@@ -14,4 +14,5 @@ class WorkOrderStage extends Model
     public function workOrder() { return $this->belongsTo(WorkOrder::class); }
     public function machine() { return $this->belongsTo(Machine::class); }
     public function items() { return $this->hasMany(WorkOrderStageItem::class); }
+    public function outputs() { return $this->hasMany(ProductionOutput::class); }
 }

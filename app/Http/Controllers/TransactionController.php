@@ -12,14 +12,21 @@ use Illuminate\Support\Facades\Auth;
 class TransactionController extends Controller
 {
     // Inventory (Stock In/Out)
+    // Inventory (Stock In/Out)
     public function indexInventory()
     {
-        $data = StockTransaction::with(['item', 'warehouse', 'user'])->latest()->get();
-        // Use join to get unit name efficiently
+        // Use pagination instead of get() for large datasets
+        $data = StockTransaction::with(['item', 'warehouse', 'user'])
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
+
+        // Efficiently fetch master list for dropdowns
         $skuMasterList = \DB::table('items')
             ->leftJoin('units', 'items.unit_id', '=', 'units.id')
             ->select('items.id', 'items.code', 'items.name', 'units.name as unit_name')
             ->get();
+            
         $warehouses = Warehouse::all();
         return view('transactions.inventory.index', compact('data', 'skuMasterList', 'warehouses'));
     }
@@ -35,17 +42,19 @@ class TransactionController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
         ]);
 
-        foreach ($request->items as $item) {
-            StockTransaction::create([
-                'item_id' => $item['item_id'],
-                'warehouse_id' => $request->warehouse_id,
-                'type' => $request->type,
-                'quantity' => $item['quantity'],
-                'reference_no' => $request->reference_no,
-                'note' => $item['note'] ?? $request->note,
-                'user_id' => Auth::id(),
-            ]);
-        }
+        \DB::transaction(function() use ($request) {
+            foreach ($request->items as $item) {
+                StockTransaction::create([
+                    'item_id' => $item['item_id'],
+                    'warehouse_id' => $request->warehouse_id,
+                    'type' => $request->type,
+                    'quantity' => $item['quantity'],
+                    'reference_no' => $request->reference_no,
+                    'note' => $item['note'] ?? $request->note,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+        });
 
         return redirect()->back()->with('success', 'Transaksi multi-item berhasil disimpan');
     }
@@ -53,7 +62,10 @@ class TransactionController extends Controller
     // Stock Opname
     public function indexOpname()
     {
-        $data = StockOpname::with(['item', 'warehouse', 'user', 'approver'])->latest()->get();
+        $data = StockOpname::with(['item', 'warehouse', 'user', 'approver'])
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
         return view('transactions.opname.index', compact('data'));
     }
 
@@ -86,25 +98,27 @@ class TransactionController extends Controller
             'items.*.physical_qty' => 'required|numeric|min:0',
         ]);
 
-        foreach ($request->items as $item) {
-            $system_qty = StockTransaction::where('item_id', $item['item_id'])
-                ->where('warehouse_id', $request->warehouse_id)
-                ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-                ->value('total') ?? 0;
+        \DB::transaction(function() use ($request) {
+            foreach ($request->items as $item) {
+                $system_qty = StockTransaction::where('item_id', $item['item_id'])
+                    ->where('warehouse_id', $request->warehouse_id)
+                    ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
+                    ->value('total') ?? 0;
 
-            StockOpname::create([
-                'item_id' => $item['item_id'],
-                'warehouse_id' => $request->warehouse_id,
-                'system_qty' => $system_qty,
-                'physical_qty' => $item['physical_qty'],
-                'difference' => $item['physical_qty'] - $system_qty,
-                'status' => 'PENDING',
-                'note' => $item['note'] ?? null,
-                'user_id' => Auth::id(),
-            ]);
-        }
+                StockOpname::create([
+                    'item_id' => $item['item_id'],
+                    'warehouse_id' => $request->warehouse_id,
+                    'system_qty' => $system_qty,
+                    'physical_qty' => $item['physical_qty'],
+                    'difference' => $item['physical_qty'] - $system_qty,
+                    'status' => 'PENDING',
+                    'note' => $item['note'] ?? null,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+        });
 
-        return redirect()->route('opname.index')->with('success', 'Permintaan opname berhasil diajukan dan menunggu persetujuan supervisor.');
+        return redirect()->route('opname.index')->with('success', 'Permintaan opname berhasil diajukan.');
     }
 
     public function indexOpnameApproval()
@@ -125,26 +139,27 @@ class TransactionController extends Controller
             return redirect()->back()->with('error', 'Transaksi ini sudah diproses.');
         }
 
-        $opname->update([
-            'status' => 'APPROVED',
-            'approved_by' => Auth::id(),
-            'approved_at' => now()
-        ]);
-
-        // Create adjustment transaction if there is a difference
-        if ($opname->difference != 0) {
-            StockTransaction::create([
-                'item_id' => $opname->item_id,
-                'warehouse_id' => $opname->warehouse_id,
-                'type' => $opname->difference > 0 ? 'IN' : 'OUT',
-                'quantity' => abs($opname->difference),
-                'reference_no' => 'ADJ-OPNAME-' . $opname->id,
-                'note' => 'Penyesuaian Stock Opname: ' . $opname->note,
-                'user_id' => Auth::id(),
+        \DB::transaction(function() use ($opname) {
+            $opname->update([
+                'status' => 'APPROVED',
+                'approved_by' => Auth::id(),
+                'approved_at' => now()
             ]);
-        }
 
-        return redirect()->back()->with('success', 'Stock opname berhasil disetujui dan stok telah diperbarui.');
+            if ($opname->difference != 0) {
+                StockTransaction::create([
+                    'item_id' => $opname->item_id,
+                    'warehouse_id' => $opname->warehouse_id,
+                    'type' => $opname->difference > 0 ? 'IN' : 'OUT',
+                    'quantity' => abs($opname->difference),
+                    'reference_no' => 'ADJ-OPNAME-' . $opname->id,
+                    'note' => 'Penyesuaian Stock Opname: ' . $opname->note,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Stock opname disetujui.');
     }
 
     public function rejectOpname($id)
@@ -174,9 +189,9 @@ class TransactionController extends Controller
             $transactions = StockTransaction::where('item_id', $item_id)
                 ->with('warehouse')
                 ->latest()
-                ->get();
+                ->paginate(50)
+                ->withQueryString();
             
-            // Calculate running balance (simple way for history)
             $current_stock = StockTransaction::where('item_id', $item_id)
                 ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
                 ->value('total') ?? 0;
@@ -184,18 +199,18 @@ class TransactionController extends Controller
             return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock'));
         }
 
+        // Optimized with single aggregate query to avoid N+1
         $items = Item::with(['unit', 'category'])
+            ->leftJoin('stock_transactions', 'items.id', '=', 'stock_transactions.item_id')
+            ->select('items.*')
+            ->selectRaw("SUM(CASE WHEN stock_transactions.type = 'IN' THEN stock_transactions.quantity ELSE -stock_transactions.quantity END) as current_stock")
             ->when($search, function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+                $q->where('items.name', 'like', "%{$search}%")
+                  ->orWhere('items.code', 'like', "%{$search}%");
             })
-            ->get()
-            ->map(function($item) {
-                $item->current_stock = StockTransaction::where('item_id', $item->id)
-                    ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-                    ->value('total') ?? 0;
-                return $item;
-            });
+            ->groupBy('items.id')
+            ->paginate(20)
+            ->withQueryString();
 
         return view('transactions.stock_card.index', compact('items', 'search'));
     }

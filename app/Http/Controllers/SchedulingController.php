@@ -9,14 +9,41 @@ use Carbon\Carbon;
 
 class SchedulingController extends Controller
 {
+    protected $schedulingService;
+
+    public function __construct(\App\Services\SchedulingService $schedulingService)
+    {
+        $this->schedulingService = $schedulingService;
+    }
+
     public function index()
     {
-        $workOrders = WorkOrder::with(['priority', 'customer', 'stages.machine', 'stages.items.item'])
-            ->whereIn('status', ['pending', 'in_progress'])
-            ->orderBy('priority_id', 'desc')
+        // Tuning: Fetch only necessary columns for performance
+        $workOrders = WorkOrder::with([
+                'priority:id,name,color,level', 
+                'customer:id,name', 
+                'products.item:id,name,code', 
+                'products.item.substitutes:id,name,code',
+                'stages.machine:id,name',
+                'stages.machine.substitutes:id,name',
+                'stages.machine.capabilities:id,name',
+                'stages.items.item:id,name,code',
+                'stages.items.item.substitutes:id,name,code'
+            ])
+            ->leftJoin('priorities', 'work_orders.priority_id', '=', 'priorities.id')
+            ->select([
+                'work_orders.id', 'work_orders.wo_number', 'work_orders.production_line', 
+                'work_orders.status', 'work_orders.priority_id', 'work_orders.customer_id',
+                'work_orders.scheduled_start', 'work_orders.scheduled_end', 'work_orders.sort_order'
+            ])
+            ->whereIn('work_orders.status', ['ready_to_production', 'in_progress'])
+            ->orderBy('work_orders.production_line', 'asc')
+            ->orderByRaw('CASE WHEN priorities.level IS NULL THEN 999 ELSE priorities.level END ASC')
+            ->orderByRaw('CASE WHEN work_orders.sort_order = 0 OR work_orders.sort_order IS NULL THEN 9999 ELSE work_orders.sort_order END ASC')
+            ->orderBy('work_orders.updated_at', 'desc')
             ->get();
             
-        $priorities = Priority::all();
+        $priorities = Priority::select('id', 'name', 'color', 'level')->get();
         
         return view('production.scheduling.index', compact('workOrders', 'priorities'));
     }
@@ -27,71 +54,26 @@ class SchedulingController extends Controller
             'start' => 'required|date',
             'end' => 'required|date|after_or_equal:start',
             'priority_id' => 'nullable|exists:priorities,id',
-            'stage_machines' => 'nullable|array',
-            'item_substitutions' => 'nullable|array'
+            'production_line' => 'required|integer',
+            'sort_order' => 'nullable|integer',
+            'stage_machines' => 'nullable|array'
         ]);
 
-        $wo = WorkOrder::with('stages')->findOrFail($id);
-        
         try {
-            \Illuminate\Support\Facades\Log::info('Starting Schedule Update', ['id' => $id, 'data' => $request->all()]);
-            
-            \Illuminate\Support\Facades\DB::transaction(function() use ($request, $wo) {
-                $wo->update([
-                    'scheduled_start' => $request->start,
-                    'scheduled_end' => $request->end,
-                    'priority_id' => $request->priority_id
-                ]);
-
-                // Update Stage Machines & Recalculate Duration
-                if ($request->has('stage_machines')) {
-                    foreach ($request->stage_machines as $stageId => $machineId) {
-                        \Illuminate\Support\Facades\Log::info('Updating machine for stage', ['stage_id' => $stageId, 'machine_id' => $machineId]);
-                        $stage = $wo->stages->find($stageId);
-                        if ($stage) {
-                            $oldMachineId = $stage->machine_id;
-                            $stage->machine_id = $machineId;
-                            
-                            if ($oldMachineId != $machineId) {
-                                $newMachine = \App\Models\Machine::find($machineId);
-                                if ($newMachine && $newMachine->capacity > 0) {
-                                    $totalQty = \Illuminate\Support\Facades\DB::table('work_order_products')->where('work_order_id', $wo->id)->sum('quantity');
-                                    $totalBatch = $wo->total_batch ?? 1;
-                                    $grandTotalQty = $totalQty * $totalBatch;
-                                    
-                                    $unit = strtolower($newMachine->capacity_unit ?? '');
-                                    if (str_contains($unit, 'menit') || str_contains($unit, 'min')) {
-                                        $hours = $grandTotalQty / ($newMachine->capacity * 60);
-                                    } else {
-                                        $hours = $grandTotalQty / $newMachine->capacity;
-                                    }
-                                    $stage->duration_hours = round($hours, 2);
-                                    \Illuminate\Support\Facades\Log::info('Recalculated duration', ['hours' => $stage->duration_hours]);
-                                }
-                            }
-                            $stage->save();
-                        }
-                    }
-                }
-
-                // Update Item Substitutions
-                if ($request->has('item_substitutions')) {
-                    foreach ($request->item_substitutions as $stageItemId => $itemId) {
-                        \Illuminate\Support\Facades\Log::info('Updating item substitution', ['stage_item_id' => $stageItemId, 'item_id' => $itemId]);
-                        \Illuminate\Support\Facades\DB::table('work_order_stage_items')->where('id', $stageItemId)->update(['item_id' => $itemId]);
-                    }
-                }
-            });
-
+            $this->schedulingService->updateWorkOrderSchedule($id, $request->all());
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Scheduling Error: ' . $e->getMessage(), [
-                'id' => $id,
-                'request' => $request->all(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    public function repairSchedules()
+    {
+        $lines = WorkOrder::whereNotNull('production_line')->distinct()->pluck('production_line');
+        foreach($lines as $line) {
+            $this->schedulingService->resequenceLine($line);
+        }
+        return response()->json(['success' => true, 'message' => 'All schedules repaired successfully']);
     }
 
     public function getSubstitutes(Request $request)
@@ -112,5 +94,38 @@ class SchedulingController extends Controller
         }
 
         return response()->json([]);
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'schedules' => 'required|array',
+            'schedules.*.id' => 'required|exists:work_orders,id',
+            'schedules.*.start' => 'required|date',
+            'schedules.*.end' => 'required|date',
+        ]);
+
+        try {
+            return \Illuminate\Support\Facades\DB::transaction(function() use ($request) {
+                $linesAffected = [];
+                foreach ($request->schedules as $sched) {
+                    $wo = WorkOrder::findOrFail($sched['id']);
+                    $wo->update([
+                        'scheduled_start' => $sched['start'],
+                        'scheduled_end' => $sched['end'],
+                    ]);
+                    $linesAffected[] = $wo->production_line;
+                }
+
+                // Resequence all affected lines
+                foreach (array_unique($linesAffected) as $line) {
+                    $this->schedulingService->resequenceLine($line);
+                }
+
+                return response()->json(['success' => true, 'message' => 'Schedules re-sequenced successfully']);
+            });
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
     }
 }

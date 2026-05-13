@@ -131,29 +131,50 @@
                 </div>
                 <form action="{{ route('substitutions.item.store') }}" method="POST" class="space-y-6">
                     @csrf
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1 space-y-2">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Item Utama</label>
+                                <select name="item_id" id="main_item_select" required onchange="updateItemUnit('main')" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                    <option value="">-- Pilih Item --</option>
+                                    @foreach($items as $i)
+                                        <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->name }} ({{ $i->code }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="w-24 space-y-2">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Qty</label>
+                                <div class="relative">
+                                    <input type="number" id="main_qty" value="1" step="0.01" oninput="calculateRatio()" class="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                    <span id="main_unit_label" class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-500/50 uppercase">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <div class="flex-1 space-y-2">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Item Pengganti</label>
+                                <select name="substitute_item_id" id="sub_item_select" required onchange="updateItemUnit('sub')" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                    <option value="">-- Pilih Item Pengganti --</option>
+                                    @foreach($items as $i)
+                                        <option value="{{ $i->id }}" data-unit="{{ $i->unit->name ?? '-' }}">{{ $i->name }} ({{ $i->code }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="w-24 space-y-2">
+                                <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Qty</label>
+                                <div class="relative">
+                                    <input type="number" id="sub_qty" value="1" step="0.01" oninput="calculateRatio()" class="w-full bg-slate-900 border border-white/5 rounded-2xl px-4 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                    <span id="sub_unit_label" class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-emerald-500/50 uppercase">-</span>
+                                </div>
+                            </div>
+                        </div>
                     <div class="space-y-2">
-                        <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Item Utama</label>
-                        <select name="item_id" required class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
-                            <option value="">-- Pilih Item --</option>
-                            @foreach($items as $i)
-                                <option value="{{ $i->id }}">{{ $i->name }} ({{ $i->code }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Item Pengganti</label>
-                        <select name="substitute_item_id" required class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all">
-                            <option value="">-- Pilih Item Pengganti --</option>
-                            @foreach($items as $i)
-                                <option value="{{ $i->id }}">{{ $i->name }} ({{ $i->code }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest ml-1">Rasio Konversi</label>
+                        <div class="flex justify-between items-center px-1">
+                            <label class="text-[12px] font-black text-slate-500 uppercase tracking-widest">Rasio Konversi</label>
+                            <span id="ratio_preview" class="text-[10px] font-black text-emerald-500 italic uppercase">1 Utama : 1.0000 Pengganti</span>
+                        </div>
                         <div class="flex items-center gap-3 bg-slate-900 border border-white/5 rounded-2xl px-5 py-4">
-                            <input type="number" step="0.0001" name="conversion_ratio" required value="1.0000" class="w-full bg-transparent border-none text-sm text-white outline-none" placeholder="1.0000">
-                            <span class="text-[12px] text-emerald-400 font-black">RATIO</span>
+                            <input type="number" step="0.01" name="conversion_ratio" id="conversion_ratio" required value="1.00" class="w-full bg-transparent border-none text-sm text-white outline-none" placeholder="1.00">
+                            <span class="text-[12px] text-emerald-400 font-black tracking-widest opacity-50">FINAL RATIO</span>
                         </div>
                     </div>
                     <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-emerald-500/20">
@@ -193,7 +214,10 @@
                                     </div>
                                 </td>
                                 <td class="py-6 px-8">
-                                    <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-[12px] font-bold">{{ number_format($is->conversion_ratio, 4) }}</span>
+                                    <div class="flex flex-col">
+                                        <span class="px-2 py-1 bg-emerald-500/10 text-emerald-500 rounded text-[12px] font-bold w-fit">{{ number_format($is->conversion_ratio, 2) }}</span>
+                                        <div class="text-[9px] text-slate-500 font-bold uppercase mt-1">1 {{ $is->item_unit }} = {{ number_format($is->conversion_ratio, 2) }} {{ $is->substitute_unit }}</div>
+                                    </div>
                                 </td>
                                 <td class="py-6 px-8 text-right">
                                     <form action="{{ route('substitutions.delete', ['type' => 'item', 'id' => $is->id]) }}" method="POST">
@@ -519,6 +543,27 @@
             renderOptions();
             if (typeof lucide !== 'undefined') lucide.createIcons();
         });
+    }
+
+    function updateItemUnit(type) {
+        const select = document.getElementById(type === 'main' ? 'main_item_select' : 'sub_item_select');
+        const label = document.getElementById(type === 'main' ? 'main_unit_label' : 'sub_unit_label');
+        const selectedOption = select.options[select.selectedIndex];
+        const unit = selectedOption ? selectedOption.getAttribute('data-unit') : '-';
+        label.innerText = unit || '-';
+        calculateRatio();
+    }
+
+    function calculateRatio() {
+        const mainQty = parseFloat(document.getElementById('main_qty').value) || 1;
+        const subQty = parseFloat(document.getElementById('sub_qty').value) || 1;
+        const ratio = subQty / mainQty;
+        
+        const ratioInput = document.getElementById('conversion_ratio');
+        const preview = document.getElementById('ratio_preview');
+        
+        ratioInput.value = ratio.toFixed(2);
+        preview.innerText = `1 Utama : ${ratio.toFixed(2)} Pengganti`;
     }
 
     // Call init

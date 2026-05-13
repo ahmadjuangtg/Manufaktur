@@ -10,33 +10,35 @@ use App\Models\Supplier;
 use App\Models\Item;
 use Illuminate\Http\Request;
 
-class MasterController extends Controller {
+class MasterController extends Controller 
+{
+    protected $masterService;
+
+    public function __construct(\App\Services\MasterDataService $masterService)
+    {
+        $this->masterService = $masterService;
+    }
+
     // SUPPLIERS
-    public function indexSupplier() { 
+    public function indexSupplier(Request $request) { 
+        $query = Supplier::query()->with('items');
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%");
+        }
         return view('master.suppliers.index', [
-            'data' => Supplier::with('items')->get(),
-            'items' => Item::all()
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'items' => Item::select('id', 'name')->get(),
+            'search' => $request->search
         ]); 
     }
     public function storeSupplier(Request $request) {
         $request->validate(['name' => 'required']);
-        $data = $request->all();
-        $data['code'] = Supplier::generateCode();
-        $s = Supplier::create($data);
-        if ($request->has('item_ids')) {
-            $s->items()->sync($request->item_ids);
-        }
+        $this->masterService->storeSupplier($request->all());
         return redirect()->back()->with('success', 'Supplier created.');
     }
     public function updateSupplier(Request $request, $id) {
-        $s = Supplier::findOrFail($id);
         $request->validate(['name' => 'required']);
-        $s->update($request->all());
-        if ($request->has('item_ids')) {
-            $s->items()->sync($request->item_ids);
-        } else {
-            $s->items()->detach();
-        }
+        $this->masterService->updateSupplier($id, $request->all());
         return redirect()->back()->with('success', 'Supplier updated.');
     }
     public function destroySupplier($id) {
@@ -45,10 +47,20 @@ class MasterController extends Controller {
     }
 
     // CATEGORIES
-    public function indexCategory() { return view('master.categories.index', ['data' => Category::all()]); }
+    public function indexCategory(Request $request) { 
+        $query = Category::query();
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('prefix', 'LIKE', "%{$request->search}%");
+        }
+        return view('master.categories.index', [
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'search' => $request->search
+        ]); 
+    }
     public function storeCategory(Request $request) {
         $request->validate(['prefix' => 'required|unique:categories', 'name' => 'required']);
-        Category::create(['code' => Category::generateCode(), 'prefix' => strtoupper($request->prefix), 'name' => $request->name]);
+        $this->masterService->storeCategory($request->all());
         return redirect()->back()->with('success', 'Category created.');
     }
     public function updateCategory(Request $request, $id) {
@@ -63,10 +75,20 @@ class MasterController extends Controller {
     }
 
     // TYPES
-    public function indexType() { return view('master.types.index', ['data' => Type::all()]); }
+    public function indexType(Request $request) { 
+        $query = Type::query();
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('prefix', 'LIKE', "%{$request->search}%");
+        }
+        return view('master.types.index', [
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'search' => $request->search
+        ]); 
+    }
     public function storeType(Request $request) {
         $request->validate(['prefix' => 'required|unique:types', 'name' => 'required']);
-        Type::create(['code' => Type::generateCode(), 'prefix' => strtoupper($request->prefix), 'name' => $request->name]);
+        $this->masterService->storeType($request->all());
         return redirect()->back()->with('success', 'Type created.');
     }
     public function updateType(Request $request, $id) {
@@ -81,7 +103,17 @@ class MasterController extends Controller {
     }
 
     // MANUFACTURERS
-    public function indexManufacturer() { return view('master.manufacturers.index', ['data' => Manufacturer::all()]); }
+    public function indexManufacturer(Request $request) { 
+        $query = Manufacturer::query();
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('code', 'LIKE', "%{$request->search}%");
+        }
+        return view('master.manufacturers.index', [
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'search' => $request->search
+        ]); 
+    }
     public function storeManufacturer(Request $request) {
         $request->validate(['name' => 'required']);
         $data = $request->all();
@@ -101,7 +133,17 @@ class MasterController extends Controller {
     }
 
     // UNITS
-    public function indexUnit() { return view('master.units.index', ['data' => Unit::all()]); }
+    public function indexUnit(Request $request) { 
+        $query = Unit::query();
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('code', 'LIKE', "%{$request->search}%");
+        }
+        return view('master.units.index', [
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'search' => $request->search
+        ]); 
+    }
     public function storeUnit(Request $request) {
         $request->validate(['name' => 'required']);
         Unit::create(['code' => Unit::generateCode(), 'name' => $request->name]);
@@ -119,33 +161,75 @@ class MasterController extends Controller {
     }
 
     // ITEMS
-    public function indexItem() {
+    public function indexItem(Request $request) {
+        $query = Item::with([
+            'category:id,name', 
+            'type:id,name', 
+            'manufacturer:id,name', 
+            'unit:id,name'
+        ]);
+
+        if ($request->search) {
+            $query->where(function($q) use ($request) {
+                $q->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('code', 'LIKE', "%{$request->search}%")
+                  ->orWhere('barcode', 'LIKE', "%{$request->search}%");
+            });
+        }
+
         return view('master.items.index', [
-            'data' => Item::with(['category', 'type', 'manufacturer', 'unit'])->get(),
-            'categories' => Category::all(), 'types' => Type::all(), 'manufacturers' => Manufacturer::all(), 'units' => Unit::all()
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'categories' => Category::select('id', 'name')->get(), 
+            'types' => Type::select('id', 'name')->get(), 
+            'manufacturers' => Manufacturer::select('id', 'name')->get(), 
+            'units' => Unit::select('id', 'name')->get(),
+            'search' => $request->search
         ]);
     }
     public function storeItem(Request $request) {
         $request->validate(['barcode' => 'required|unique:items', 'name' => 'required', 'category_id' => 'required', 'type_id' => 'required', 'manufacturer_id' => 'required', 'unit_id' => 'required']);
-        $data = $request->all();
-        $data['code'] = Item::generateCode($request->category_id, $request->type_id);
-        $data['display_name'] = $request->name;
-        Item::create($data);
+        $this->masterService->storeItem($request->all());
         return redirect()->back()->with('success', 'Item created.');
     }
     public function updateItem(Request $request, $id) {
-        $item = Item::findOrFail($id);
         $request->validate(['barcode' => 'required|unique:items,barcode,'.$id, 'name' => 'required', 'category_id' => 'required', 'type_id' => 'required']);
-        $data = $request->all();
-        if ($item->category_id != $request->category_id || $item->type_id != $request->type_id) {
-            $data['code'] = Item::generateCode($request->category_id, $request->type_id);
-        }
-        $data['display_name'] = $request->name;
-        $item->update($data);
+        $this->masterService->updateItem($id, $request->all());
         return redirect()->back()->with('success', 'Item updated.');
     }
     public function destroyItem($id) {
         Item::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Item deleted.');
+    }
+
+    public function copySupplierToManufacturer($id) {
+        $s = Supplier::findOrFail($id);
+        
+        // Check if manufacturer with same name already exists
+        if (Manufacturer::where('name', $s->name)->exists()) {
+            return redirect()->back()->with('error', 'Manufaktur dengan nama yang sama sudah terdaftar.');
+        }
+
+        $data = $s->toArray();
+        unset($data['id'], $data['code'], $data['created_at'], $data['updated_at']);
+        $data['code'] = Manufacturer::generateCode();
+        
+        Manufacturer::create($data);
+        return redirect()->route('manufacturers.index')->with('success', 'Supplier berhasil di-copy ke Manufaktur.');
+    }
+
+    public function copyManufacturerToSupplier($id) {
+        $m = Manufacturer::findOrFail($id);
+        
+        // Check if supplier with same name already exists
+        if (Supplier::where('name', $m->name)->exists()) {
+            return redirect()->back()->with('error', 'Supplier dengan nama yang sama sudah terdaftar.');
+        }
+
+        $data = $m->toArray();
+        unset($data['id'], $data['code'], $data['created_at'], $data['updated_at']);
+        $data['code'] = Supplier::generateCode();
+        
+        Supplier::create($data);
+        return redirect()->route('suppliers.index')->with('success', 'Manufaktur berhasil di-copy ke Supplier.');
     }
 }

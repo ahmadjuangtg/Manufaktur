@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Item extends Model {
     protected $fillable = [
         'barcode', 'code', 'name', 'display_name', 'category_id', 'type_id', 
-        'manufacturer_id', 'unit_id', 'package_contain', 'length', 'width', 'height'
+        'manufacturer_id', 'unit_id', 'package_qty', 'package_type', 
+        'package_contain', 'length', 'width', 'height'
     ];
     public function category() { return $this->belongsTo(Category::class); }
     public function type() { return $this->belongsTo(Type::class); }

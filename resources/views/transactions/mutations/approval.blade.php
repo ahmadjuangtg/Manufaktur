@@ -34,6 +34,11 @@
                             <div>
                                 <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">Reference No</p>
                                 <h4 class="text-lg font-black text-white tracking-tight">{{ $m->reference_no }}</h4>
+                                @if($m->workOrder)
+                                <div class="mt-2 flex items-center gap-2">
+                                    <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[8px] font-black uppercase tracking-widest rounded-md border border-indigo-500/10">Work Order: {{ $m->workOrder->wo_number }}</span>
+                                </div>
+                                @endif
                             </div>
                         </div>
 

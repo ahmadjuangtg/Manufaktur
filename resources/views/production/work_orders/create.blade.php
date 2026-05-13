@@ -51,7 +51,7 @@
                         </div>
                         <div class="space-y-2 relative z-20">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Estimasi Durasi (Hari)</label>
-                            <input type="number" step="0.01" name="duration" id="duration" placeholder="0.00" class="w-full bg-slate-900 border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all shadow-inner">
+                            <input type="number" step="1" name="duration" id="duration" value="1" placeholder="1" class="w-full bg-slate-900 border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all shadow-inner">
                         </div>
                         <div class="space-y-2 md:col-span-2">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Estimasi Selesai Produksi</label>
@@ -507,13 +507,6 @@
             // Update next start time for cascading
             nextStartTime = endTime;
         });
-
-        const mainDurationInput = document.getElementById('duration');
-        if (mainDurationInput && document.activeElement !== mainDurationInput) {
-            const days = totalHours / 24;
-            mainDurationInput.value = days.toFixed(2);
-            calculateFinishDate();
-        }
     }
 
     // --- Event Listeners ---

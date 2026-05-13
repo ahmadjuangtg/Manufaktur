@@ -8,10 +8,15 @@ use Illuminate\Http\Request;
 
 class MachineCategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $data = MachineCategory::all();
-        return view('master.machine_categories.index', compact('data'));
+        $query = MachineCategory::query();
+        if ($request->search) {
+            $query->where('name', 'LIKE', "%{$request->search}%")
+                  ->orWhere('code', 'LIKE', "%{$request->search}%");
+        }
+        $data = $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString();
+        return view('master.machine_categories.index', compact('data'))->with('search', $request->search);
     }
 
     public function store(Request $request)

@@ -13,7 +13,7 @@ class SubstitutionController extends Controller
     public function index()
     {
         $machines = Machine::where('is_active', true)->orderBy('name')->get();
-        $items = Item::orderBy('name')->get();
+        $items = Item::with('unit')->orderBy('name')->get();
         
         // Fetch all substitutions and capabilities
         $machineSubstitutions = DB::table('machine_substitutions')
@@ -24,8 +24,10 @@ class SubstitutionController extends Controller
 
         $itemSubstitutions = DB::table('item_substitutions')
             ->join('items as i1', 'item_substitutions.item_id', '=', 'i1.id')
+            ->join('units as u1', 'i1.unit_id', '=', 'u1.id')
             ->join('items as i2', 'item_substitutions.substitute_item_id', '=', 'i2.id')
-            ->select('item_substitutions.*', 'i1.name as item_name', 'i2.name as substitute_name')
+            ->join('units as u2', 'i2.unit_id', '=', 'u2.id')
+            ->select('item_substitutions.*', 'i1.name as item_name', 'u1.name as item_unit', 'i2.name as substitute_name', 'u2.name as substitute_unit')
             ->get();
 
         $capabilities = DB::table('machine_capabilities')

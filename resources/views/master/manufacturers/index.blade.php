@@ -2,14 +2,20 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
             <h3 class="text-xl font-bold">Database Manufaktur</h3>
             <p class="text-slate-400 text-sm">Kelola data mitra manufaktur terdaftar</p>
         </div>
-        <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
-            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Manufaktur
-        </button>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <form action="{{ route('manufacturers.index') }}" method="GET" class="relative flex-1 md:w-80">
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Nama atau Kode Manufaktur..." class="w-full bg-slate-800/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-all text-sm">
+                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            </form>
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap text-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i> Tambah Manufaktur
+            </button>
+        </div>
     </div>
 
     <!-- Table Section -->
@@ -33,17 +39,23 @@
                         <div class="text-[12px] text-slate-500">{{ $item->email }}</div>
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm text-slate-400">{{ $item->city }}, {{ $item->province }}</div>
+                        <div class="text-sm text-slate-400 line-clamp-2 max-w-[250px]" title="{{ $item->address }}">
+                            {{ $item->address }}
+                        </div>
                     </td>
                     <td class="px-6 py-4">
                         <div class="text-sm text-white">{{ $item->contact_name }}</div>
                         <div class="text-[12px] text-slate-500">{{ $item->contact_phone }}</div>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <button onclick="editManufacturer({{ $item->toJson() }})" class="p-2 text-slate-500 hover:text-indigo-400"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                        <form action="{{ route('manufacturers.delete', $item->id) }}" method="POST" class="inline">
+                        <form id="copy-form-{{ $item->id }}" action="{{ route('manufacturers.copy', $item->id) }}" method="POST" class="inline">
                             @csrf
-                            <button class="p-2 text-slate-500 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <button type="button" onclick="confirmAction('Copy data ini ke Supplier?', () => document.getElementById('copy-form-{{ $item->id }}').submit())" class="p-2 text-slate-500 hover:text-amber-400" title="Copy to Supplier"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                        </form>
+                        <button onclick="editManufacturer({{ $item->toJson() }})" class="p-2 text-slate-500 hover:text-indigo-400"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <form id="delete-form-{{ $item->id }}" action="{{ route('manufacturers.delete', $item->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="button" onclick="confirmAction('Yakin ingin menghapus manufaktur ini?', () => document.getElementById('delete-form-{{ $item->id }}').submit())" class="p-2 text-slate-500 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -52,6 +64,12 @@
                 @endforelse
             </tbody>
         </table>
+
+        @if($data->hasPages())
+        <div class="px-6 py-4 bg-slate-800/30 border-t border-white/5">
+            {{ $data->links() }}
+        </div>
+        @endif
     </div>
 </div>
 
@@ -63,7 +81,7 @@
             <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
         </div>
         <div class="flex-1 overflow-y-auto p-8 modal-scroll bg-[#0f172a]/50">
-            <form id="manufForm" action="{{ route('manufacturers.store') }}" method="POST" class="space-y-6">
+            <form id="manufForm" action="{{ route('manufacturers.store') }}" method="POST" class="space-y-6" onsubmit="return handleFormSubmit(this)">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="md:col-span-2">
@@ -128,8 +146,7 @@
                         <input type="text" name="phone" id="phone" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
                     </div>
                     <div>
-                        <label class="block text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-1">Email</label>
-                        <input type="email" name="email" id="email" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white">
+                        <input type="text" name="email" id="email" placeholder="Email / Website" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white">
                     </div>
                 </div>
                 <div class="pt-6 border-t border-white/5">
@@ -139,24 +156,54 @@
                             <input type="text" name="contact_name" id="contact_name" placeholder="Nama Lengkap PIC*" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
                         </div>
                         <input type="text" name="contact_phone" id="contact_phone" placeholder="No. Telp PIC*" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
-                        <input type="email" name="contact_email" id="contact_email" placeholder="Email PIC*" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
+                        <input type="text" name="contact_email" id="contact_email" placeholder="Email / Website PIC" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white">
                     </div>
                 </div>
             </form>
         </div>
         <div class="p-6 border-t border-white/5 bg-slate-800/50 flex justify-end gap-3">
             <button onclick="closeModal()" class="px-6 py-2 text-slate-400 font-bold">Batal</button>
-            <button type="submit" form="manufForm" class="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-indigo-500/20">Simpan Data</button>
+            <button type="submit" form="manufForm" id="submitBtn" class="bg-indigo-600 text-white px-8 py-2 rounded-lg font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-2">
+                <span id="btnText">Simpan Data</span>
+                <div id="btnLoader" class="hidden w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
+    function handleFormSubmit(form) {
+        const btn = document.getElementById('submitBtn');
+        const text = document.getElementById('btnText');
+        const loader = document.getElementById('btnLoader');
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        text.innerText = 'Memproses...';
+        loader.classList.remove('hidden');
+        return true;
+    }
+
+    function resetSubmitButton() {
+        const btn = document.getElementById('submitBtn');
+        const text = document.getElementById('btnText');
+        const loader = document.getElementById('btnLoader');
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        text.innerText = 'Simpan Data';
+        loader.classList.add('hidden');
+    }
+
     function openModal() { 
         document.getElementById('modalTitle').innerText = 'Input Manufaktur';
         document.getElementById('manufForm').action = "{{ route('manufacturers.store') }}";
         document.getElementById('manufForm').reset();
         toggleOrigin(true);
+        resetSubmitButton();
+        
+        // Load region data only when needed
+        loadProvinces();
+        loadCountries();
+        
         document.getElementById('modal').classList.remove('hidden'); 
     }
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
@@ -177,7 +224,7 @@
         }
     }
 
-    function editManufacturer(data) {
+    async function editManufacturer(data) {
         document.getElementById('modalTitle').innerText = 'Edit Manufaktur';
         document.getElementById('manufForm').action = `/master/manufacturers/update/${data.id}`;
         
@@ -197,68 +244,86 @@
             document.getElementById('country').value = data.country;
         }
 
+        // Load region data only when needed
+        loadProvinces();
+        loadCountries();
+
         // Regions
-        if (isLocal) {
-            if (data.province) {
-                const pSel = document.getElementById('province');
-                pSel.innerHTML = `<option value="${data.province}" data-name="${data.province}" selected>${data.province}</option>`;
-                loadProvinces();
+        if (isLocal && data.province) {
+            const pSel = document.getElementById('province');
+            // We need to wait for provinces to load first if they haven't
+            if (!provincesLoaded) await loadProvinces();
+            
+            for (let opt of pSel.options) {
+                if (opt.text === data.province) {
+                    pSel.value = opt.value;
+                    await loadCities(opt.value);
+                    break;
+                }
             }
+
             if (data.city) {
                 const cSel = document.getElementById('city');
-                cSel.disabled = false;
-                cSel.innerHTML = `<option value="${data.city}" data-name="${data.city}" selected>${data.city}</option>`;
-            }
-            if (data.district) {
-                const dSel = document.getElementById('district');
-                dSel.disabled = false;
-                dSel.innerHTML = `<option value="${data.district}" data-name="${data.district}" selected>${data.district}</option>`;
-            }
-            if (data.sub_district) {
-                const vSel = document.getElementById('village');
-                vSel.disabled = false;
-                vSel.innerHTML = `<option value="${data.sub_district}" data-name="${data.sub_district}" selected>${data.sub_district}</option>`;
+                for (let opt of cSel.options) {
+                    if (opt.text === data.city) {
+                        cSel.value = opt.value;
+                        await loadDistricts(opt.value);
+                        break;
+                    }
+                }
+
+                if (data.district) {
+                    const dSel = document.getElementById('district');
+                    for (let opt of dSel.options) {
+                        if (opt.text === data.district) {
+                            dSel.value = opt.value;
+                            await loadVillages(opt.value);
+                            break;
+                        }
+                    }
+
+                    if (data.sub_district) {
+                        const vSel = document.getElementById('village');
+                        for (let opt of vSel.options) {
+                            if (opt.text === data.sub_district) {
+                                vSel.value = opt.value;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
         
+        resetSubmitButton();
         document.getElementById('modal').classList.remove('hidden');
     }
 
     // REGION API LOGIC
     const API_BASE = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+    let provincesLoaded = false;
+    let countriesLoaded = false;
 
     async function loadProvinces() {
+        if (provincesLoaded) return;
         const select = document.getElementById('province');
         const existingVal = select.value;
-        const resp = await fetch(`${API_BASE}/provinces.json`);
-        const data = await resp.json();
-        
-        if (!existingVal) select.innerHTML = '<option value="">Pilih Provinsi</option>';
-        
-        data.forEach(p => {
-            if (p.name === existingVal) {
-                select.options[0].value = p.id;
-                return;
-            }
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.text = p.name;
-            opt.dataset.name = p.name;
-            select.appendChild(opt);
-        });
-    }
-
-    async function loadCountries() {
-        const datalist = document.getElementById('country_list');
         try {
-            const resp = await fetch('/countries.json');
-            const sorted = await resp.json();
-            sorted.forEach(name => {
+            const resp = await fetch(`${API_BASE}/provinces.json`);
+            const data = await resp.json();
+            
+            if (!existingVal) select.innerHTML = '<option value="">Pilih Provinsi</option>';
+            
+            data.forEach(p => {
                 const opt = document.createElement('option');
-                opt.value = name;
-                datalist.appendChild(opt);
+                opt.value = p.id;
+                opt.text = p.name;
+                opt.dataset.name = p.name;
+                if (p.name === existingVal) opt.selected = true;
+                select.appendChild(opt);
             });
-        } catch (e) { console.error("Error loading countries", e); }
+            provincesLoaded = true;
+        } catch (e) { console.error("Error loading provinces", e); }
     }
 
     async function loadCities(provinceId) {
@@ -269,16 +334,19 @@
         document.getElementById('district').disabled = true;
         document.getElementById('village').innerHTML = '<option value="">Pilih Kelurahan</option>';
         document.getElementById('village').disabled = true;
+
         if (!provinceId) return;
-        const resp = await fetch(`${API_BASE}/regencies/${provinceId}.json`);
-        const data = await resp.json();
-        data.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.text = c.name;
-            opt.dataset.name = c.name;
-            select.appendChild(opt);
-        });
+        try {
+            const resp = await fetch(`${API_BASE}/regencies/${provinceId}.json`);
+            const data = await resp.json();
+            data.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.text = c.name;
+                opt.dataset.name = c.name;
+                select.appendChild(opt);
+            });
+        } catch (e) { console.error("Error loading cities", e); }
     }
 
     async function loadDistricts(cityId) {
@@ -287,36 +355,63 @@
         select.innerHTML = '<option value="">Pilih Kecamatan</option>';
         document.getElementById('village').innerHTML = '<option value="">Pilih Kelurahan</option>';
         document.getElementById('village').disabled = true;
+
         if (!cityId) return;
-        const resp = await fetch(`${API_BASE}/districts/${cityId}.json`);
-        const data = await resp.json();
-        data.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.text = d.name;
-            opt.dataset.name = d.name;
-            select.appendChild(opt);
-        });
+        try {
+            const resp = await fetch(`${API_BASE}/districts/${cityId}.json`);
+            const data = await resp.json();
+            data.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.text = d.name;
+                opt.dataset.name = d.name;
+                select.appendChild(opt);
+            });
+        } catch (e) { console.error("Error loading districts", e); }
     }
 
     async function loadVillages(districtId) {
         const select = document.getElementById('village');
         select.disabled = !districtId;
         select.innerHTML = '<option value="">Pilih Kelurahan</option>';
+
         if (!districtId) return;
-        const resp = await fetch(`${API_BASE}/villages/${districtId}.json`);
-        const data = await resp.json();
-        data.forEach(v => {
-            const opt = document.createElement('option');
-            opt.value = v.id;
-            opt.text = v.name;
-            opt.dataset.name = v.name;
-            select.appendChild(opt);
-        });
+        try {
+            const resp = await fetch(`${API_BASE}/villages/${districtId}.json`);
+            const data = await resp.json();
+            data.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.text = v.name;
+                opt.dataset.name = v.name;
+                select.appendChild(opt);
+            });
+        } catch (e) { console.error("Error loading villages", e); }
     }
 
-    loadProvinces();
-    loadCountries();
+    async function loadCountries() {
+        if (countriesLoaded) return;
+        const datalist = document.getElementById('country_list');
+        try {
+            const resp = await fetch('/countries.json');
+            if (!resp.ok) throw new Error('Countries file not found');
+            const sorted = await resp.json();
+            datalist.innerHTML = ''; 
+            sorted.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                datalist.appendChild(opt);
+            });
+            countriesLoaded = true;
+        } catch (e) { 
+            console.warn("Countries local file not found, using fallback");
+            ['Indonesia', 'Singapore', 'Malaysia', 'China', 'Japan', 'USA'].forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                datalist.appendChild(opt);
+            });
+        }
+    }
 
     document.getElementById('manufForm').addEventListener('submit', function(e) {
         const p = document.getElementById('province');

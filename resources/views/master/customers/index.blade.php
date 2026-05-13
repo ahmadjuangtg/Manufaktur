@@ -2,14 +2,20 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
             <h3 class="text-xl font-bold text-white">Master Customer</h3>
             <p class="text-slate-400 text-sm italic">Manage your customer database and profiles</p>
         </div>
-        <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all">
-            <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Pelanggan
-        </button>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <form action="{{ route('customers.index') }}" method="GET" class="relative flex-1 md:w-80">
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Nama, ID, atau Email..." class="w-full bg-slate-800/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-all text-sm">
+                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            </form>
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap text-sm">
+                <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Pelanggan
+            </button>
+        </div>
     </div>
 
     <!-- Table Section -->
@@ -26,21 +32,21 @@
             <tbody class="divide-y divide-white/5">
                 @forelse($data as $item)
                 <tr class="hover:bg-white/5 transition-colors group">
-                    <td class="px-6 py-4 font-mono text-sm text-indigo-400 font-bold">{{ $item->customer_id }}</td>
+                    <td class="px-6 py-4 font-mono text-[13px] text-indigo-400 font-bold">{{ $item->customer_id }}</td>
                     <td class="px-6 py-4">
-                        <div class="font-bold text-white">{{ $item->name }}</div>
-                        <div class="text-[12px] text-slate-500 italic">User: {{ $item->username ?? '-' }} ({{ $item->gender ?? 'N/A' }})</div>
+                        <div class="font-bold text-white text-[13px]">{{ $item->name }}</div>
+                        <div class="text-[10px] text-slate-300 italic font-medium uppercase tracking-tight">PIC: {{ $item->username ?? '-' }} ({{ $item->gender ?? 'N/A' }})</div>
                     </td>
                     <td class="px-6 py-4">
-                        <div class="text-sm text-slate-300">{{ $item->email }}</div>
-                        <div class="text-[12px] text-slate-500">{{ $item->phone }}</div>
-                        <div class="text-[11px] text-slate-600 mt-1 truncate max-w-[200px]">{{ $item->address }}</div>
+                        <div class="text-[12px] text-white/90 font-medium">{{ $item->email }}</div>
+                        <div class="text-[11px] text-slate-300 font-bold tracking-tight">{{ $item->phone }}</div>
+                        <div class="text-[10px] text-slate-400 mt-1 truncate max-w-[250px]" title="{{ $item->address }}">{{ $item->address }}</div>
                     </td>
                     <td class="px-6 py-4 text-right">
                         <button onclick="editCustomer({{ $item->toJson() }})" class="p-2 text-slate-500 hover:text-indigo-400"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                        <form action="{{ route('customers.delete', $item->id) }}" method="POST" class="inline">
+                        <form id="delete-form-{{ $item->id }}" action="{{ route('customers.delete', $item->id) }}" method="POST" class="inline">
                             @csrf
-                            <button class="p-2 text-slate-500 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            <button type="button" onclick="confirmAction('Yakin ingin menghapus pelanggan ini?', () => document.getElementById('delete-form-{{ $item->id }}').submit())" class="p-2 text-slate-500 hover:text-rose-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -49,6 +55,12 @@
                 @endforelse
             </tbody>
         </table>
+
+        @if($data->hasPages())
+        <div class="px-6 py-4 bg-slate-800/30 border-t border-white/5">
+            {{ $data->links() }}
+        </div>
+        @endif
     </div>
 </div>
 
@@ -60,7 +72,7 @@
             <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
         </div>
         <div class="flex-1 overflow-y-auto p-10 modal-scroll bg-[#0f172a]/50">
-            <form id="customerForm" action="{{ route('customers.store') }}" method="POST" class="space-y-6">
+            <form id="customerForm" action="{{ route('customers.store') }}" method="POST" class="space-y-6" onsubmit="return handleFormSubmit(this)">
                 @csrf
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -68,16 +80,16 @@
                         <input type="text" id="disp_customer_id" value="AUTO-GENERATED" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 text-indigo-400 font-bold" readonly>
                     </div>
                     <div>
-                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Contact Person</label>
-                        <input type="text" name="username" id="username" placeholder="Nama PIC / Kontak" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white font-medium">
+                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Contact Person*</label>
+                        <input type="text" name="username" id="username" placeholder="Nama PIC / Kontak" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white font-medium" required>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Nama Pelanggan*</label>
                         <input type="text" name="name" id="name" placeholder="Masukkan nama lengkap" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white font-medium" required>
                     </div>
                     <div>
-                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Email</label>
-                        <input type="email" name="email" id="email" placeholder="contoh@mail.com" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white">
+                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Email / Website</label>
+                        <input type="text" name="email" id="email" placeholder="contoh@mail.com" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white">
                     </div>
                     <div>
                         <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">No. Telepon*</label>
@@ -110,17 +122,42 @@
         </div>
         <div class="p-8 border-t border-white/5 bg-slate-800/50 flex justify-end gap-3 shrink-0">
             <button onclick="closeModal()" class="px-6 py-2.5 text-slate-400 font-bold hover:text-white transition-colors">Batal</button>
-            <button type="submit" form="customerForm" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95">Simpan Pelanggan</button>
+            <button type="submit" form="customerForm" id="submitBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center gap-2">
+                <span id="btnText">Simpan Pelanggan</span>
+                <div id="btnLoader" class="hidden w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            </button>
         </div>
     </div>
 </div>
 
 <script>
+    function handleFormSubmit(form) {
+        const btn = document.getElementById('submitBtn');
+        const text = document.getElementById('btnText');
+        const loader = document.getElementById('btnLoader');
+        btn.disabled = true;
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        text.innerText = 'Memproses...';
+        loader.classList.remove('hidden');
+        return true;
+    }
+
+    function resetSubmitButton() {
+        const btn = document.getElementById('submitBtn');
+        const text = document.getElementById('btnText');
+        const loader = document.getElementById('btnLoader');
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        text.innerText = 'Simpan Pelanggan';
+        loader.classList.add('hidden');
+    }
+
     function openModal() {
         document.getElementById('modalTitle').innerText = 'Tambah Pelanggan Baru';
         document.getElementById('customerForm').action = "{{ route('customers.store') }}";
         document.getElementById('customerForm').reset();
         document.getElementById('disp_customer_id').value = 'AUTO-GENERATED';
+        resetSubmitButton();
         document.getElementById('modal').classList.remove('hidden');
     }
 
@@ -144,6 +181,7 @@
             if (radio) radio.checked = true;
         }
 
+        resetSubmitButton();
         document.getElementById('modal').classList.remove('hidden');
     }
 
@@ -152,6 +190,7 @@
         try {
             const resp = await fetch('/countries.json');
             const sorted = await resp.json();
+            datalist.innerHTML = '';
             sorted.forEach(name => {
                 const opt = document.createElement('option');
                 opt.value = name;

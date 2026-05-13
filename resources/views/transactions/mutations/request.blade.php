@@ -17,6 +17,7 @@
             <thead>
                 <tr class="bg-slate-800/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
                     <th class="px-8 py-5">Ref No & Tanggal</th>
+                    <th class="px-8 py-5">Work Order</th>
                     <th class="px-8 py-5">Dari Gudang</th>
                     <th class="px-8 py-5">Ke Gudang</th>
                     <th class="px-8 py-5 text-center">Status</th>
@@ -29,6 +30,13 @@
                     <td class="px-8 py-5">
                         <div class="text-xs text-white font-bold">{{ $m->reference_no }}</div>
                         <div class="text-[10px] text-slate-500 font-medium mt-1">{{ $m->created_at->format('d M Y, H:i') }}</div>
+                    </td>
+                    <td class="px-8 py-5">
+                        @if($m->workOrder)
+                        <div class="text-[10px] text-indigo-400 font-black uppercase tracking-widest">{{ $m->workOrder->wo_number }}</div>
+                        @else
+                        <div class="text-[10px] text-slate-600 font-bold uppercase tracking-widest">-</div>
+                        @endif
                     </td>
                     <td class="px-8 py-5">
                         <div class="text-xs text-slate-300 font-bold">{{ $m->fromWarehouse->name }}</div>
@@ -55,7 +63,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-8 py-20 text-center text-slate-500">Belum ada permintaan mutasi.</td></tr>
+                <tr><td colspan="6" class="px-8 py-20 text-center text-slate-500">Belum ada permintaan mutasi.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -81,6 +89,18 @@
         <div class="flex-1 overflow-y-auto p-10 modal-scroll bg-[#0f172a]/30">
             <form id="requestForm" action="{{ route('mutations.request.store') }}" method="POST" class="space-y-8">
                 @csrf
+                <div class="grid grid-cols-1 gap-8">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Terkait Work Order (Opsional)</label>
+                        <select name="work_order_id" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none select2">
+                            <option value="">-- Bukan untuk Work Order Spesifik --</option>
+                            @foreach($workOrders as $wo)
+                            <option value="{{ $wo->id }}" {{ (isset($selected_wo_id) && $selected_wo_id == $wo->id) ? 'selected' : '' }}>{{ $wo->wo_number }} ({{ $wo->status }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-8">
                     <div>
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Asal (Pengirim)*</label>
@@ -177,6 +197,11 @@
                     <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Ke Gudang</p>
                     <p id="detTo" class="text-sm font-bold text-white"></p>
                 </div>
+            </div>
+
+            <div id="detWOWrapper" class="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 hidden">
+                <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Terkait Work Order</p>
+                <p id="detWO" class="text-sm font-black text-white"></p>
             </div>
             
             <div>
@@ -283,6 +308,13 @@
                         </div>
                     `;
                 });
+                
+                if (data.work_order) {
+                    document.getElementById('detWO').innerText = data.work_order.wo_number;
+                    document.getElementById('detWOWrapper').classList.remove('hidden');
+                } else {
+                    document.getElementById('detWOWrapper').classList.add('hidden');
+                }
 
                 if (data.note) {
                     document.getElementById('detNote').innerText = data.note;
@@ -299,5 +331,11 @@
     function closeDetails() {
         document.getElementById('detailsModal').classList.add('hidden');
     }
+    // Auto open modal if WO is selected
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(isset($selected_wo_id) && $selected_wo_id)
+            openRequestModal();
+        @endif
+    });
 </script>
 @endsection

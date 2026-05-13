@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0f172a; color: #f8fafc; height: 100vh; overflow: hidden; }
         .sidebar { background-color: #1e293b; border-right: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease; height: 100%; display: flex; flex-direction: column; }
@@ -32,6 +34,19 @@
             .content-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 40; }
             .content-overlay.open { display: block; }
         }
+
+        /* SweetAlert2 Custom Styling */
+        .swal2-popup {
+            background: rgba(30, 41, 59, 0.9) !important;
+            backdrop-filter: blur(15px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 2rem !important;
+            color: #f8fafc !important;
+        }
+        .swal2-title { color: #f8fafc !important; font-weight: 800 !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; font-size: 1.25rem !important; }
+        .swal2-html-container { color: #94a3b8 !important; font-size: 0.875rem !important; }
+        .swal2-confirm { background: #4f46e5 !important; border-radius: 1rem !important; font-weight: 800 !important; text-transform: uppercase !important; font-size: 0.75rem !important; letter-spacing: 0.1em !important; padding: 1rem 2rem !important; }
+        .swal2-cancel { background: rgba(255,255,255,0.05) !important; color: #94a3b8 !important; border-radius: 1rem !important; font-weight: 800 !important; text-transform: uppercase !important; font-size: 0.75rem !important; letter-spacing: 0.1em !important; }
     </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -82,7 +97,7 @@
             <div class="pt-8 pb-3 px-4 text-[12px] font-black text-slate-500 uppercase tracking-[0.2em]">Master Data</div>
             @if(Auth::user()->hasPermission('master_item_view'))
             <a href="{{ route('items.index') }}" class="sidebar-item {{ Request::is('master/items*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="package" class="w-6 h-6"></i> Master Item
+                <i data-lucide="package" class="w-6 h-6"></i> Item
             </a>
             @endif
             @if(Auth::user()->hasPermission('master_category_view'))
@@ -95,19 +110,24 @@
                 <i data-lucide="box" class="w-6 h-6"></i> Tipe Item
             </a>
             @endif
-            @if(Auth::user()->hasPermission('master_manufacturer_view'))
-            <a href="{{ route('manufacturers.index') }}" class="sidebar-item {{ Request::is('master/manufacturers*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="factory" class="w-6 h-6"></i> Manufaktur
-            </a>
-            @endif
             @if(Auth::user()->hasPermission('master_unit_view'))
             <a href="{{ route('units.index') }}" class="sidebar-item {{ Request::is('master/units*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
                 <i data-lucide="ruler" class="w-6 h-6"></i> Satuan
             </a>
             @endif
+            @if(Auth::user()->hasPermission('master_manufacturer_view'))
+            <a href="{{ route('manufacturers.index') }}" class="sidebar-item {{ Request::is('master/manufacturers*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="factory" class="w-6 h-6"></i> Manufaktur
+            </a>
+            @endif
+            @if(Auth::user()->hasPermission('master_supplier_view'))
+            <a href="{{ route('suppliers.index') }}" class="sidebar-item {{ Request::is('master/suppliers*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="truck" class="w-6 h-6"></i> Supplier
+            </a>
+            @endif
             @if(Auth::user()->hasPermission('master_customer_view'))
             <a href="{{ route('customers.index') }}" class="sidebar-item {{ Request::is('master/customers*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="user-circle" class="w-6 h-6"></i> Master Customer
+                <i data-lucide="user-circle" class="w-6 h-6"></i> Customer
             </a>
             @endif
             @if(Auth::user()->hasPermission('master_machine_category_view'))
@@ -117,22 +137,17 @@
             @endif
             @if(Auth::user()->hasPermission('master_machine_view'))
             <a href="{{ route('machines.index') }}" class="sidebar-item {{ Request::is('master/machines*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="cpu" class="w-6 h-6"></i> Master Mesin
+                <i data-lucide="cpu" class="w-6 h-6"></i> Mesin
             </a>
             @endif
             @if(Auth::user()->hasPermission('master_warehouse_view'))
             <a href="{{ route('warehouses.index') }}" class="sidebar-item {{ Request::is('master/warehouses*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="home" class="w-6 h-6"></i> Master Gudang
-            </a>
-            @endif
-            @if(Auth::user()->hasPermission('master_supplier_view'))
-            <a href="{{ route('suppliers.index') }}" class="sidebar-item {{ Request::is('master/suppliers*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="truck" class="w-6 h-6"></i> Master Supplier
+                <i data-lucide="home" class="w-6 h-6"></i> Gudang
             </a>
             @endif
             @if(Auth::user()->hasPermission('master_priority_view'))
             <a href="{{ route('priorities.index') }}" class="sidebar-item {{ Request::is('master/priorities*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
-                <i data-lucide="list-ordered" class="w-6 h-6"></i> Master Prioritas
+                <i data-lucide="list-ordered" class="w-6 h-6"></i> Prioritas
             </a>
             @endif
             @if(Auth::user()->hasPermission('master_substitution_view'))
@@ -169,6 +184,17 @@
                 <i data-lucide="calendar-range" class="w-6 h-6"></i> Scheduling Production
             </a>
             @endif
+
+            <div class="pt-8 pb-3 px-4 text-[12px] font-black text-slate-500 uppercase tracking-[0.2em]">Shop Floor & Laporan</div>
+            <a href="{{ route('shop_floor.index') }}" class="sidebar-item {{ Request::is('shop-floor*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="monitor" class="w-6 h-6"></i> Shop Floor Dashboard
+            </a>
+            <a href="{{ route('production.reports.lhp') }}" class="sidebar-item {{ Request::is('production/reports/lhp*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="clipboard" class="w-6 h-6"></i> Laporan LHP
+            </a>
+            <a href="{{ route('production.reports.handover') }}" class="sidebar-item {{ Request::is('production/reports/handover*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="send" class="w-6 h-6"></i> Serah Terima (NPB/PHP)
+            </a>
             @endif
 
             @if(Auth::user()->hasPermission('inventory_view') || Auth::user()->hasPermission('stock_opname_view') || Auth::user()->hasPermission('stock_card_view'))
@@ -236,6 +262,30 @@
             @if(Auth::user()->hasPermission('order_receive_view'))
             <a href="{{ route('orders.receives.index') }}" class="sidebar-item {{ Request::is('orders/receives*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
                 <i data-lucide="package-check" class="w-6 h-6"></i> Receive Material
+            </a>
+            @endif
+            @endif
+
+            @php
+                $hasLogisticsPermission = Auth::user()->hasPermission('logistics_packing_view') || 
+                                        Auth::user()->hasPermission('logistics_delivery_view') ||
+                                        Auth::user()->hasPermission('logistics_tracking_view');
+            @endphp
+            @if($hasLogisticsPermission)
+            <div class="pt-8 pb-3 px-4 text-[12px] font-black text-slate-500 uppercase tracking-[0.2em]">Logistics & Delivery</div>
+            @if(Auth::user()->hasPermission('logistics_packing_view'))
+            <a href="{{ route('logistics.packing.index') }}" class="sidebar-item {{ Request::is('logistics/packing*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="box" class="w-6 h-6"></i> Packing List
+            </a>
+            @endif
+            @if(Auth::user()->hasPermission('logistics_delivery_view'))
+            <a href="{{ route('logistics.delivery.index') }}" class="sidebar-item {{ Request::is('logistics/delivery*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="truck" class="w-6 h-6"></i> Delivery Batch
+            </a>
+            @endif
+            @if(Auth::user()->hasPermission('logistics_tracking_view'))
+            <a href="{{ route('logistics.tracking.index') }}" class="sidebar-item {{ Request::is('logistics/tracking*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="map-pin" class="w-6 h-6"></i> Tracking Delivery
             </a>
             @endif
             @endif
@@ -350,35 +400,49 @@
             }, 4000);
         }
 
-        function createToastContainer() {
-            const container = document.createElement('div');
-            container.id = 'toast-container';
-            container.className = 'fixed bottom-10 left-1/2 transform -translate-x-1/2 z-[9999] flex flex-col gap-3 items-center pointer-events-none';
-            document.body.appendChild(container);
-            return container;
-        }
-
-        // Persist Sidebar Scroll Position
-        const sidebarNav = document.getElementById('sidebarNav');
-        if (sidebarNav) {
-            // Restore position
-            const scrollPos = localStorage.getItem('sidebarScrollPos');
-            if (scrollPos) {
-                sidebarNav.scrollTop = scrollPos;
-            }
-
-            // Save position on scroll (throttled)
-            sidebarNav.addEventListener('scroll', () => {
-                localStorage.setItem('sidebarScrollPos', sidebarNav.scrollTop);
+        // SweetAlert2 for Flash Messages
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'BERHASIL',
+                text: "{{ session('success') }}",
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
             });
-            
-            // Also save on link click to be sure
-            document.querySelectorAll('.sidebar-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    localStorage.setItem('sidebarScrollPos', sidebarNav.scrollTop);
-                });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'ERROR',
+                text: "{{ session('error') }}",
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
             });
-        }
+        @endif
+
+        // Global Confirm Function
+        window.confirmAction = function(message, callback) {
+            Swal.fire({
+                title: 'KONFIRMASI',
+                text: message,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'YA, LANJUTKAN',
+                cancelButtonText: 'BATAL',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    callback();
+                }
+            });
+        };
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');

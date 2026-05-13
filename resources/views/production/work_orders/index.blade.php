@@ -114,7 +114,8 @@
                         <td class="p-6">
                             @php
                                 $statusColors = [
-                                    'pending' => 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+                                    'pending' => 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+                                    'ready_to_production' => 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
                                     'in_progress' => 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
                                     'completed' => 'bg-blue-500/10 text-blue-500 border-blue-500/20',
                                     'cancelled' => 'bg-rose-500/10 text-rose-500 border-rose-500/20'
@@ -127,11 +128,21 @@
                         </td>
                         <td class="p-6 text-right">
                             <div class="flex justify-end gap-2">
-                                <button class="p-2 bg-slate-800 hover:bg-indigo-600 rounded-xl text-slate-400 hover:text-white transition-all shadow-lg group-hover:scale-110" title="View Detail">
+                                <button onclick="viewDetail({{ $wo->toJson() }})" class="p-2 bg-slate-800 hover:bg-indigo-600 rounded-xl text-slate-400 hover:text-white transition-all shadow-lg group-hover:scale-110" title="View Detail">
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
                                 
                                 @if($wo->status === 'pending')
+                                <form action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="status" value="ready_to_production">
+                                    <button type="submit" class="p-2 bg-indigo-600/10 hover:bg-indigo-600 rounded-xl text-indigo-500 hover:text-white transition-all shadow-lg" title="Mark as Ready">
+                                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                                @endif
+ 
+                                @if($wo->status === 'ready_to_production')
                                 <form action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="in_progress">
@@ -152,10 +163,10 @@
                                 @endif
                                 
                                 @if($wo->status !== 'completed' && $wo->status !== 'cancelled')
-                                <form action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST" onsubmit="return confirm('Cancel this WO?')">
+                                <form id="cancel-form-{{ $wo->id }}" action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="cancelled">
-                                    <button type="submit" class="p-2 bg-rose-600/10 hover:bg-rose-600 rounded-xl text-rose-500 hover:text-white transition-all shadow-lg" title="Cancel WO">
+                                    <button type="button" onclick="confirmAction('Batalkan Work Order ini?', () => document.getElementById('cancel-form-{{ $wo->id }}').submit())" class="p-2 bg-rose-600/10 hover:bg-rose-600 rounded-xl text-rose-500 hover:text-white transition-all shadow-lg" title="Cancel WO">
                                         <i data-lucide="x-circle" class="w-4 h-4"></i>
                                     </button>
                                 </form>
@@ -183,4 +194,145 @@
         </div>
     </div>
 </div>
+
+<!-- Detail Modal -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-6 border-b border-white/5 flex justify-between items-center bg-[#1e293b]">
+            <div>
+                <h3 class="text-xl font-black text-white uppercase tracking-tight" id="detail_wo_number">WO-XXXX</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Work Order Detail Information</p>
+            </div>
+            <button onclick="closeDetailModal()" class="p-2 hover:bg-white/5 rounded-xl text-slate-400 transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto p-8 custom-scroll space-y-8">
+            <!-- Basic Info -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-4 rounded-2xl">
+                    <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Customer</p>
+                    <p class="text-sm font-bold text-white" id="detail_customer">-</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Production Date</p>
+                    <p class="text-sm font-bold text-white" id="detail_date">-</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Status</p>
+                    <div id="detail_status_container"></div>
+                </div>
+            </div>
+
+            <!-- Products -->
+            <div>
+                <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i data-lucide="package" class="w-4 h-4 text-indigo-400"></i> Products to Produce
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="detail_products_list"></div>
+            </div>
+
+            <!-- Stages -->
+            <div>
+                <h4 class="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i> Production Stages
+                </h4>
+                <div class="space-y-4" id="detail_stages_list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewDetail(wo) {
+        document.getElementById('detail_wo_number').innerText = wo.wo_number;
+        document.getElementById('detail_customer').innerText = wo.customer ? wo.customer.name : '-';
+        document.getElementById('detail_date').innerText = new Date(wo.production_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        
+        // Status
+        const statusColors = {
+            'pending': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+            'ready_to_production': 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+            'in_progress': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+            'completed': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+            'cancelled': 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+        };
+        const colorClass = statusColors[wo.status] || statusColors.pending;
+        document.getElementById('detail_status_container').innerHTML = `
+            <span class="px-3 py-1 rounded-full border ${colorClass} text-[9px] font-black uppercase tracking-widest">
+                ${wo.status.replace('_', ' ')}
+            </span>
+        `;
+
+        // Products
+        let productsHtml = '';
+        wo.products.forEach(p => {
+            productsHtml += `
+                <div class="bg-[#0f172a]/50 border border-white/5 p-4 rounded-2xl flex justify-between items-center">
+                    <div>
+                        <p class="text-white font-bold text-xs">${p.item.name}</p>
+                        <p class="text-[9px] text-slate-500 font-bold mt-1 uppercase">${p.item.code || ''}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-indigo-400 font-black text-lg">${p.quantity}</p>
+                        <p class="text-[9px] text-slate-500 font-bold uppercase">Units</p>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('detail_products_list').innerHTML = productsHtml;
+
+        // Stages
+        let stagesHtml = '';
+        wo.stages.forEach(s => {
+            let itemsHtml = '';
+            if (s.items) {
+                s.items.forEach(i => {
+                    const typeLabel = i.type.toLowerCase() === 'input' ? '(In)' : '(Out)';
+                    const typeColor = i.type.toLowerCase() === 'input' ? 'text-emerald-400' : 'text-rose-400';
+                    itemsHtml += `
+                        <div class="flex justify-between items-center text-[10px] py-1 border-b border-white/[0.02]">
+                            <span class="text-slate-400 font-bold">${i.item ? i.item.name : 'Unknown Item'}</span>
+                            <span class="${typeColor} font-black">${typeLabel} ${i.quantity_total} ${i.item && i.item.unit ? i.item.unit.name : ''}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            stagesHtml += `
+                <div class="glass-card rounded-2xl overflow-hidden">
+                    <div class="p-4 bg-white/5 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white">${s.sequence}</span>
+                            <span class="text-white font-black text-xs uppercase tracking-tight">${s.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mr-2">Machine:</span>
+                            <span class="text-emerald-400 font-black text-[10px] uppercase">${s.machine ? s.machine.name : 'Manual'}</span>
+                        </div>
+                    </div>
+                    <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">Technical Duration</p>
+                            <p class="text-white font-bold text-xs"><i data-lucide="clock" class="w-3 h-3 inline mr-1 text-indigo-400"></i> ${s.duration_hours || 0} Hours</p>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2">Material Allocation</p>
+                            <div class="space-y-1">${itemsHtml || '<span class="text-slate-600 italic text-[10px]">No materials</span>'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        document.getElementById('detail_stages_list').innerHTML = stagesHtml;
+
+        document.getElementById('detailModal').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+</script>
 @endsection

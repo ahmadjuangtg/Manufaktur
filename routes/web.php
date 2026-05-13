@@ -9,6 +9,8 @@ use App\Http\Controllers\Master\CustomerController;
 use App\Http\Controllers\Master\MachineCategoryController;
 use App\Http\Controllers\Master\MachineController;
 use App\Http\Controllers\Master\WarehouseController;
+use App\Http\Controllers\ShopFloorController;
+use App\Http\Controllers\ProductionReportController;
 use Illuminate\Support\Facades\Route;
 
 // Authentication
@@ -35,6 +37,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/manufacturers', [MasterController::class, 'storeManufacturer'])->name('manufacturers.store');
         Route::post('/manufacturers/update/{id}', [MasterController::class, 'updateManufacturer'])->name('manufacturers.update');
         Route::post('/manufacturers/delete/{id}', [MasterController::class, 'destroyManufacturer'])->name('manufacturers.delete');
+        Route::post('/manufacturers/copy-to-supplier/{id}', [MasterController::class, 'copyManufacturerToSupplier'])->name('manufacturers.copy');
 
         Route::get('/units', [MasterController::class, 'indexUnit'])->name('units.index');
         Route::post('/units', [MasterController::class, 'storeUnit'])->name('units.store');
@@ -70,6 +73,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/suppliers', [MasterController::class, 'storeSupplier'])->name('suppliers.store');
         Route::post('/suppliers/update/{id}', [MasterController::class, 'updateSupplier'])->name('suppliers.update');
         Route::post('/suppliers/delete/{id}', [MasterController::class, 'destroySupplier'])->name('suppliers.delete');
+        Route::post('/suppliers/copy-to-manufacturer/{id}', [MasterController::class, 'copySupplierToManufacturer'])->name('suppliers.copy');
 
         Route::get('/priorities', [\App\Http\Controllers\PriorityController::class, 'index'])->name('priorities.index');
         Route::post('/priorities', [\App\Http\Controllers\PriorityController::class, 'store'])->name('priorities.store');
@@ -89,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/price-lists/update/{id}', [\App\Http\Controllers\PriceListController::class, 'update'])->name('price_lists.update');
         Route::post('/price-lists/delete/{id}', [\App\Http\Controllers\PriceListController::class, 'destroy'])->name('price_lists.delete');
         Route::get('/price-lists/get-price', [\App\Http\Controllers\PriceListController::class, 'getPrice'])->name('price_lists.get_price');
+        Route::get('/price-lists/check-warehouses', [\App\Http\Controllers\PriceListController::class, 'checkItemWarehouses'])->name('price_lists.check_warehouses');
     });
 
     // SECURITY
@@ -131,6 +136,8 @@ Route::middleware(['auth'])->group(function () {
         // Scheduling
         Route::get('/scheduling', [\App\Http\Controllers\SchedulingController::class, 'index'])->name('production.scheduling.index');
         Route::post('/scheduling/update/{id}', [\App\Http\Controllers\SchedulingController::class, 'updateSchedule'])->name('production.scheduling.update');
+        Route::post('/scheduling/bulk-update', [\App\Http\Controllers\SchedulingController::class, 'bulkUpdate'])->name('production.scheduling.bulk_update');
+        Route::post('/scheduling/repair', [\App\Http\Controllers\SchedulingController::class, 'repairSchedules'])->name('production.scheduling.repair');
         Route::get('/scheduling/get-substitutes', [\App\Http\Controllers\SchedulingController::class, 'getSubstitutes'])->name('production.scheduling.get_substitutes');
 
         // Templates
@@ -143,6 +150,23 @@ Route::middleware(['auth'])->group(function () {
             'update' => 'production.templates.update',
             'destroy' => 'production.templates.destroy',
         ]);
+    });
+
+    // SHOP FLOOR MODULE
+    Route::prefix('shop-floor')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\ShopFloorController::class, 'index'])->name('shop_floor.index');
+        Route::post('/stage/start/{id}', [\App\Http\Controllers\ShopFloorController::class, 'startStage'])->name('shop_floor.stage.start');
+        Route::post('/stage/finish/{id}', [\App\Http\Controllers\ShopFloorController::class, 'finishStage'])->name('shop_floor.stage.finish');
+        Route::post('/machine/status/{id}', [\App\Http\Controllers\ShopFloorController::class, 'updateMachineStatus'])->name('shop_floor.machine.status');
+        Route::post('/output/report/{id}', [\App\Http\Controllers\ShopFloorController::class, 'reportOutput'])->name('shop_floor.output.report');
+    });
+
+    // PRODUCTION REPORTS (LHP, NPB, PHP)
+    Route::prefix('production/reports')->group(function () {
+        Route::get('/lhp', [\App\Http\Controllers\ProductionReportController::class, 'indexLHP'])->name('production.reports.lhp');
+        Route::get('/handover', [\App\Http\Controllers\ProductionReportController::class, 'indexHandover'])->name('production.reports.handover');
+        Route::post('/handover', [\App\Http\Controllers\ProductionReportController::class, 'storeHandover'])->name('production.reports.handover.store');
+        Route::post('/handover/verify/{id}', [\App\Http\Controllers\ProductionReportController::class, 'verifyHandover'])->name('production.reports.handover.verify');
     });
 
     // TRANSACTIONS
@@ -174,5 +198,18 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/receive/{id}', [\App\Http\Controllers\StockMutationController::class, 'receive'])->name('mutations.receive');
             Route::get('/get-details/{id}', [\App\Http\Controllers\StockMutationController::class, 'show'])->name('mutations.get_details');
         });
+    });
+
+    // LOGISTICS MODULE
+    Route::prefix('logistics')->group(function () {
+        Route::get('/packing', [\App\Http\Controllers\LogisticsController::class, 'indexPacking'])->name('logistics.packing.index')->middleware('permission:logistics_packing_view');
+        Route::post('/packing', [\App\Http\Controllers\LogisticsController::class, 'storePacking'])->name('logistics.packing.store')->middleware('permission:logistics_packing_create');
+        Route::post('/packing/ready/{id}', [\App\Http\Controllers\LogisticsController::class, 'updateStatusPacking'])->name('logistics.packing.ready')->middleware('permission:logistics_packing_create');
+        
+        Route::get('/delivery', [\App\Http\Controllers\LogisticsController::class, 'indexDelivery'])->name('logistics.delivery.index')->middleware('permission:logistics_delivery_view');
+        Route::post('/delivery', [\App\Http\Controllers\LogisticsController::class, 'storeDelivery'])->name('logistics.delivery.store')->middleware('permission:logistics_delivery_create');
+
+        Route::get('/tracking', [\App\Http\Controllers\LogisticsController::class, 'indexTracking'])->name('logistics.tracking.index')->middleware('permission:logistics_tracking_view');
+        Route::post('/tracking/update/{id}', [\App\Http\Controllers\LogisticsController::class, 'updateStatusDelivery'])->name('logistics.tracking.update')->middleware('permission:logistics_tracking_create');
     });
 });

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            'production/scheduling/repair',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

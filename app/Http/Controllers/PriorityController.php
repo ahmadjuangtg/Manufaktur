@@ -17,19 +17,32 @@ class PriorityController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'level' => 'required|integer|between:1,5',
+            'level' => 'required|integer|between:1,10',
             'name' => 'required|string|max:255',
             'color' => 'nullable|string'
         ]);
 
-        Priority::create([
-            'code' => Priority::generateCode(),
-            'level' => $request->level,
-            'name' => $request->name,
-            'color' => $request->color ?? '#6366f1'
-        ]);
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+            $newLevel = $request->level;
+            
+            // Shift existing priorities up (increment level)
+            $existingPriorities = Priority::where('level', '>=', $newLevel)
+                ->orderBy('level', 'desc')
+                ->get();
+                
+            foreach ($existingPriorities as $p) {
+                $p->increment('level');
+            }
 
-        return redirect()->back()->with('success', 'Priority created successfully.');
+            Priority::create([
+                'code' => Priority::generateCode(),
+                'level' => $newLevel,
+                'name' => $request->name,
+                'color' => $request->color ?? '#6366f1'
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Priority created and levels re-sequenced.');
     }
 
     public function update(Request $request, $id)
@@ -37,14 +50,31 @@ class PriorityController extends Controller
         $priority = Priority::findOrFail($id);
         
         $request->validate([
-            'level' => 'required|integer|between:1,5',
+            'level' => 'required|integer|between:1,10',
             'name' => 'required|string|max:255',
             'color' => 'nullable|string'
         ]);
 
-        $priority->update($request->all());
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $priority) {
+            $newLevel = $request->level;
+            $oldLevel = $priority->level;
 
-        return redirect()->back()->with('success', 'Priority updated successfully.');
+            if ($newLevel != $oldLevel) {
+                // Shift others
+                $others = Priority::where('id', '!=', $priority->id)
+                    ->where('level', '>=', $newLevel)
+                    ->orderBy('level', 'desc')
+                    ->get();
+                
+                foreach ($others as $p) {
+                    $p->increment('level');
+                }
+            }
+
+            $priority->update($request->all());
+        });
+
+        return redirect()->back()->with('success', 'Priority updated and levels shifted.');
     }
 
     public function destroy($id)

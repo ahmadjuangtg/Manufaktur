@@ -6,11 +6,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class Machine extends Model
 {
-    protected $fillable = ['code', 'name', 'machine_category_id', 'capacity', 'capacity_unit', 'output_unit', 'outlet', 'is_active'];
+    protected $fillable = ['code', 'name', 'machine_category_id', 'supplier_id', 'capacity', 'capacity_unit', 'output_unit', 'outlet', 'is_active'];
 
     public function category()
     {
         return $this->belongsTo(MachineCategory::class, 'machine_category_id');
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
+    }
+
+    public function steps()
+    {
+        return $this->hasMany(MachineStep::class)->orderBy('sequence');
     }
 
     protected static function booted()

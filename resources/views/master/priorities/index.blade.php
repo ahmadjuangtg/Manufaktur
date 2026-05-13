@@ -17,6 +17,7 @@
         <table class="w-full text-left">
             <thead>
                 <tr class="bg-slate-800/50 text-slate-400 text-[12px] uppercase tracking-widest border-b border-white/5">
+                    <th class="px-8 py-4">Terakhir Diperbarui</th>
                     <th class="px-8 py-4">Kode</th>
                     <th class="px-8 py-4">Level</th>
                     <th class="px-8 py-4">Nama Prioritas</th>
@@ -27,6 +28,9 @@
             <tbody class="divide-y divide-white/5">
                 @forelse($data as $item)
                 <tr class="hover:bg-white/5 transition-colors group">
+                    <td class="px-8 py-4 text-[11px] font-bold text-slate-500 italic">
+                        {{ $item->updated_at->format('d/m/Y H:i') }}
+                    </td>
                     <td class="px-8 py-4 font-mono text-sm font-bold text-indigo-400">{{ $item->code }}</td>
                     <td class="px-8 py-4">
                         <span class="px-2 py-1 rounded bg-slate-800 text-white text-sm font-bold">Level {{ $item->level }}</span>
@@ -47,7 +51,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-8 py-12 text-center text-slate-500 italic">No priorities registered.</td></tr>
+                <tr><td colspan="6" class="px-8 py-12 text-center text-slate-500 italic">No priorities registered.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -63,13 +67,11 @@
         <form id="priorityForm" action="{{ route('priorities.store') }}" method="POST" class="space-y-4">
             @csrf
             <div>
-                <label class="block text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Level (1-5)*</label>
+                <label class="block text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Level (1-10)*</label>
                 <select name="level" id="priorityLevel" class="w-full bg-[#0f172a] border border-white/10 rounded-lg py-3 px-4 focus:border-indigo-500 outline-none text-white font-semibold" required>
-                    <option value="1">Level 1 (Highest)</option>
-                    <option value="2">Level 2</option>
-                    <option value="3">Level 3</option>
-                    <option value="4">Level 4</option>
-                    <option value="5">Level 5 (Lowest)</option>
+                    @for($i = 1; $i <= 10; $i++)
+                        <option value="{{ $i }}">Level {{ $i }} {{ $i == 1 ? '(Highest)' : ($i == 10 ? '(Lowest)' : '') }}</option>
+                    @endfor
                 </select>
             </div>
             <div>

@@ -20,4 +20,6 @@ class WorkOrder extends Model
     public function customer() { return $this->belongsTo(Customer::class); }
     public function products() { return $this->hasMany(WorkOrderProduct::class); }
     public function stages() { return $this->hasMany(WorkOrderStage::class)->orderBy('sequence'); }
+    public function outputs() { return $this->hasMany(ProductionOutput::class); }
+    public function transfers() { return $this->hasMany(ProductionTransfer::class); }
 }

@@ -118,6 +118,9 @@
                                         ['id' => 'production_template', 'label' => 'Production Template'],
                                         ['id' => 'production_wo', 'label' => 'Work Orders'],
                                         ['id' => 'production_scheduling', 'label' => 'Scheduling Production'],
+                                        ['id' => 'shop_floor', 'label' => 'Shop Floor Control'],
+                                        ['id' => 'production_report', 'label' => 'Laporan Hasil Produksi (LHP)'],
+                                        ['id' => 'production_handover', 'label' => 'Serah Terima (NPB/PHP)'],
 
                                         // Transactional
                                         ['id' => 'inventory', 'label' => 'Inventory Terminal'],
@@ -132,6 +135,11 @@
                                         ['id' => 'order_approval', 'label' => 'Approval Request PO'],
                                         ['id' => 'order_po', 'label' => 'Purchase Orders'],
                                         ['id' => 'order_receive', 'label' => 'Incoming Material'],
+
+                                        // Logistics
+                                        ['id' => 'logistics_packing', 'label' => 'Packing List'],
+                                        ['id' => 'logistics_delivery', 'label' => 'Delivery Batch'],
+                                        ['id' => 'logistics_tracking', 'label' => 'Tracking Delivery'],
 
                                         // Security
                                         ['id' => 'security_role', 'label' => 'Security Roles'],

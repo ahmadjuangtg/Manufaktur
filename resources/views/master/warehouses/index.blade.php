@@ -2,24 +2,67 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
             <h3 class="text-xl font-bold text-white uppercase tracking-tight">Master Warehouse</h3>
             <p class="text-slate-400 text-sm italic">Manage storage facilities and regional operations</p>
         </div>
-        <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Gudang
-        </button>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <form action="{{ route('warehouses.index') }}" method="GET" class="relative flex-1 md:w-80">
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Nama atau Kode Gudang..." class="w-full bg-slate-800/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-all text-sm">
+                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            </form>
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20 whitespace-nowrap text-sm">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Gudang
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="glass-card p-6 rounded-2xl border border-white/5 bg-slate-800/20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
+                    <i data-lucide="warehouse" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total Warehouses</p>
+                    <h4 class="text-2xl font-black text-white">{{ number_format($stats['total']) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card p-6 rounded-2xl border border-white/5 bg-slate-800/20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                    <i data-lucide="check-circle" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Facilities</p>
+                    <h4 class="text-2xl font-black text-white">{{ number_format($stats['active']) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card p-6 rounded-2xl border border-white/5 bg-slate-800/20">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400">
+                    <i data-lucide="map-pin" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Regional Coverage</p>
+                    <h4 class="text-2xl font-black text-white">Indonesia</h4>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Table Section -->
     <div class="glass-card rounded-2xl overflow-hidden border border-white/5 bg-slate-900/20">
         <table class="w-full text-left">
             <thead>
-                <tr class="bg-slate-800/50 text-slate-400 text-[12px] font-black uppercase tracking-widest border-b border-white/5">
+                <tr class="bg-slate-800/50 text-slate-400 text-[10px] font-black uppercase tracking-widest border-b border-white/5">
                     <th class="px-8 py-4">Nama Gudang</th>
                     <th class="px-8 py-4">Lokasi</th>
-                    <th class="px-8 py-4 text-center">Server State</th>
+                    <th class="px-8 py-4 text-center">Zona Waktu</th>
                     <th class="px-8 py-4 text-center">Operational</th>
                     <th class="px-8 py-4 text-right">Status</th>
                     <th class="px-8 py-4 text-right">Action</th>
@@ -29,17 +72,17 @@
                 @forelse($data as $item)
                 <tr class="hover:bg-white/5 transition-colors group">
                     <td class="px-8 py-4">
-                        <div class="font-bold text-white text-sm">{{ $item->name }}</div>
-                        <div class="text-[12px] text-slate-500 font-black uppercase mt-0.5">{{ $item->warehouse_type }}</div>
+                        <div class="font-bold text-white text-[13px]">{{ $item->name }}</div>
+                        <div class="text-[10px] text-slate-500 font-black uppercase mt-0.5">{{ $item->warehouse_type }}</div>
                     </td>
                     <td class="px-8 py-4">
-                        <div class="text-sm text-indigo-400 font-bold uppercase">{{ $item->city }}</div>
-                        <div class="text-[12px] text-slate-500">{{ $item->province }}</div>
+                        <div class="text-[12px] text-indigo-400 font-bold uppercase">{{ $item->city }}</div>
+                        <div class="text-[11px] text-slate-500">{{ $item->province }}</div>
                     </td>
                     <td class="px-8 py-4 text-center">
-                        <span class="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-[12px] font-black border border-white/5">{{ $item->server_state }}</span>
+                        <span class="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-[10px] font-black border border-white/5">{{ $item->server_state }}</span>
                     </td>
-                    <td class="px-8 py-4 text-center text-[12px] font-bold text-slate-500 uppercase tracking-tighter">
+                    <td class="px-8 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-tighter">
                         {{ $item->is_24_hours ? '24 HOURS' : ($item->operational_hours ?: '-') }}
                     </td>
                     <td class="px-8 py-4 text-right">
@@ -58,6 +101,12 @@
                 @endforelse
             </tbody>
         </table>
+        
+        @if($data->hasPages())
+        <div class="px-8 py-4 bg-slate-800/30 border-t border-white/5">
+            {{ $data->links() }}
+        </div>
+        @endif
     </div>
 </div>
 
@@ -85,8 +134,8 @@
                     <!-- Left Column -->
                     <div class="space-y-10">
                         <div class="space-y-2">
-                            <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Nama Gudang*</label>
-                            <input type="text" name="name" id="name" placeholder="Gudang Aori Jakarta" class="w-full bg-[#edf2f7] border-none rounded-2xl py-4 px-6 text-slate-800 font-black outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner" required>
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Nama Gudang*</label>
+                            <input type="text" name="name" id="name" placeholder="Gudang Aori Jakarta" class="w-full bg-[#edf2f7] border-none rounded-2xl py-3 px-6 text-slate-800 font-black text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all shadow-inner" required>
                         </div>
 
                         <div class="space-y-4">
@@ -105,9 +154,9 @@
                         </div>
 
                         <div class="space-y-2">
-                            <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Server States*</label>
-                            <select name="server_state" id="server_state" class="w-full bg-[#edf2f7] border-none rounded-2xl py-4 px-6 text-slate-800 font-black outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
-                                <option value="">Pilih Server States</option>
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Zona Waktu*</label>
+                            <select name="server_state" id="server_state" class="w-full bg-[#edf2f7] border-none rounded-2xl py-3 px-6 text-slate-800 font-black text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
+                                <option value="">Pilih Zona Waktu</option>
                                 <option value="WIB">WIB (Waktu Indonesia Barat)</option>
                                 <option value="WITA">WITA (Waktu Indonesia Tengah)</option>
                                 <option value="WIT">WIT (Waktu Indonesia Timur)</option>
@@ -146,23 +195,13 @@
                     <!-- Right Column -->
                     <div class="space-y-10">
                         <div class="space-y-2">
-                            <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Region*</label>
-                            <select name="region" id="region" class="w-full bg-[#edf2f7] border-none rounded-2xl py-4 px-6 text-slate-800 font-black outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
-                                <option value="">Pilih Region</option>
-                                <option value="WEST">WEST REGION</option>
-                                <option value="CENTRAL">CENTRAL REGION</option>
-                                <option value="EAST">EAST REGION</option>
-                            </select>
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">No. Telepon*</label>
+                            <input type="text" name="phone" id="phone" placeholder="0813XXXXXXXX" class="w-full bg-[#edf2f7] border-none rounded-2xl py-3 px-6 text-slate-800 font-black text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
                         </div>
 
                         <div class="space-y-2">
-                            <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">No. Telepon*</label>
-                            <input type="text" name="phone" id="phone" placeholder="0813XXXXXXXX" class="w-full bg-[#edf2f7] border-none rounded-2xl py-4 px-6 text-slate-800 font-black outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="block text-[12px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Tipe Gudang*</label>
-                            <select name="warehouse_type" id="warehouse_type" class="w-full bg-[#edf2f7] border-none rounded-2xl py-4 px-6 text-slate-800 font-black outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Tipe Gudang*</label>
+                            <select name="warehouse_type" id="warehouse_type" class="w-full bg-[#edf2f7] border-none rounded-2xl py-3 px-6 text-slate-800 font-black text-sm outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner" required>
                                 <option value="">Pilih Tipe Gudang</option>
                                 <option value="MAIN WAREHOUSE">MAIN WAREHOUSE</option>
                                 <option value="DISTRIBUTION CENTER">DISTRIBUTION CENTER</option>
@@ -240,14 +279,13 @@
     async function editWarehouse(data) {
         document.getElementById('modalTitle').innerText = 'Edit Gudang';
         document.getElementById('warehouseForm').action = `/master/warehouses/update/${data.id}`;
-        document.getElementById('formMethod').value = 'POST'; // We use POST for updates in your routes
+        document.getElementById('formMethod').value = 'POST';
         
         document.getElementById('name').value = data.name;
         document.getElementById('server_state').value = data.server_state;
         document.getElementById('address').value = data.address;
         document.getElementById('phone').value = data.phone;
         document.getElementById('postal_code').value = data.postal_code;
-        document.getElementById('region').value = data.region;
         document.getElementById('warehouse_type').value = data.warehouse_type;
         document.getElementById('area').value = data.area;
         
@@ -265,10 +303,51 @@
         if (data.is_active) document.getElementById('active_yes').checked = true;
         else document.getElementById('active_no').checked = true;
 
-        // Populate Regions (This is tricky with IDs vs Names)
-        // Since we stored NAMES, we need to match names in the loaded selects
-        // This requires the select to be loaded first
-        
+        // Restore Geographic Data
+        if (data.province) {
+            const pSelect = document.getElementById('province');
+            // Find option by name and select it
+            for (let opt of pSelect.options) {
+                if (opt.text === data.province) {
+                    pSelect.value = opt.value;
+                    await loadCities(opt.value);
+                    break;
+                }
+            }
+            
+            if (data.city) {
+                const cSelect = document.getElementById('city');
+                for (let opt of cSelect.options) {
+                    if (opt.text === data.city) {
+                        cSelect.value = opt.value;
+                        await loadDistricts(opt.value);
+                        break;
+                    }
+                }
+
+                if (data.district) {
+                    const dSelect = document.getElementById('district');
+                    for (let opt of dSelect.options) {
+                        if (opt.text === data.district) {
+                            dSelect.value = opt.value;
+                            await loadVillages(opt.value);
+                            break;
+                        }
+                    }
+
+                    if (data.village) {
+                        const vSelect = document.getElementById('village');
+                        for (let opt of vSelect.options) {
+                            if (opt.text === data.village) {
+                                vSelect.value = opt.value;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         document.getElementById('modal').classList.remove('hidden');
     }
 

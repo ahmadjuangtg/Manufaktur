@@ -26,6 +26,11 @@
                     <td class="px-8 py-5">
                         <div class="text-xs text-white font-bold">{{ $m->reference_no }}</div>
                         <div class="text-[10px] text-slate-500 font-medium mt-1">{{ $m->created_at->format('d M Y') }}</div>
+                        @if($m->workOrder)
+                        <div class="mt-2">
+                            <span class="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 text-[8px] font-black uppercase tracking-widest rounded border border-indigo-500/10">WO: {{ $m->workOrder->wo_number }}</span>
+                        </div>
+                        @endif
                     </td>
                     <td class="px-8 py-5">
                         <div class="flex items-center gap-3">
@@ -118,6 +123,11 @@
                         <p id="detTo" class="text-sm font-bold text-white"></p>
                     </div>
                 </div>
+
+                <div id="detWOWrapper" class="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 hidden">
+                    <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Terkait Work Order</p>
+                    <p id="detWO" class="text-sm font-black text-white"></p>
+                </div>
                 
                 <div>
                     <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 ml-1">Daftar Item</h4>
@@ -191,6 +201,13 @@
                         </div>
                     `;
                 });
+
+                if (data.work_order) {
+                    document.getElementById('detWO').innerText = data.work_order.wo_number;
+                    document.getElementById('detWOWrapper').classList.remove('hidden');
+                } else {
+                    document.getElementById('detWOWrapper').classList.add('hidden');
+                }
 
                 // Audit Trail
                 document.getElementById('timeReq').innerText = new Date(data.created_at).toLocaleString();

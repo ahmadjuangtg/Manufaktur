@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class StockMutation extends Model
 {
     protected $fillable = [
-        'reference_no', 'from_warehouse_id', 'to_warehouse_id', 'status', 
+        'reference_no', 'work_order_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 
         'note', 'user_id', 'approved_by', 'sent_by', 'received_by',
         'approved_at', 'sent_at', 'received_at'
     ];
@@ -17,6 +17,11 @@ class StockMutation extends Model
         'sent_at' => 'datetime',
         'received_at' => 'datetime',
     ];
+
+    public function workOrder()
+    {
+        return $this->belongsTo(WorkOrder::class);
+    }
 
     public function fromWarehouse()
     {
