@@ -46,6 +46,11 @@ class MasterController extends Controller
         return redirect()->back()->with('success', 'Supplier deleted.');
     }
 
+    public function getSupplierItems($id) {
+        $supplier = Supplier::with('items')->findOrFail($id);
+        return response()->json($supplier->items->pluck('id'));
+    }
+
     // CATEGORIES
     public function indexCategory(Request $request) { 
         $query = Category::query();
@@ -177,13 +182,23 @@ class MasterController extends Controller
             });
         }
 
+        $total_items = Item::count();
+        $items_with_sufficient_stock = \App\Models\InventoryStock::selectRaw('item_id, SUM(current_stock - lock_stock) as available')
+            ->groupBy('item_id')
+            ->havingRaw('SUM(current_stock - lock_stock) >= 10')
+            ->get()
+            ->count();
+        $low_stock_count = $total_items - $items_with_sufficient_stock;
+
         return view('master.items.index', [
             'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
             'categories' => Category::select('id', 'name')->get(), 
             'types' => Type::select('id', 'name')->get(), 
             'manufacturers' => Manufacturer::select('id', 'name')->get(), 
             'units' => Unit::select('id', 'name')->get(),
-            'search' => $request->search
+            'search' => $request->search,
+            'total_items' => $total_items,
+            'low_stock_count' => $low_stock_count
         ]);
     }
     public function storeItem(Request $request) {

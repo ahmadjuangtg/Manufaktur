@@ -28,8 +28,8 @@
             <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <i data-lucide="clock" class="w-16 h-16 text-amber-500"></i>
             </div>
-            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Pending</p>
-            <h3 class="text-3xl font-black text-white mt-2">{{ $workOrders->where('status', 'pending')->count() }}</h3>
+            <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Draft / Pending</p>
+            <h3 class="text-3xl font-black text-white mt-2">{{ $workOrders->whereIn('status', ['draft', 'pending'])->count() }}</h3>
             <div class="mt-4 flex items-center gap-2 text-amber-400 text-[10px] font-bold">
                 Waiting for Start
             </div>
@@ -112,14 +112,15 @@
                             </div>
                         </td>
                         <td class="p-6">
-                            @php
-                                $statusColors = [
-                                    'pending' => 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-                                    'ready_to_production' => 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
-                                    'in_progress' => 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-                                    'completed' => 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-                                    'cancelled' => 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                                ];
+                                @php
+                                    $statusColors = [
+                                        'draft' => 'bg-slate-700/50 text-slate-300 border-slate-500/50',
+                                        'pending' => 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+                                        'ready_to_production' => 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
+                                        'in_progress' => 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+                                        'completed' => 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+                                        'cancelled' => 'bg-rose-500/10 text-rose-500 border-rose-500/20'
+                                    ];
                                 $color = $statusColors[$wo->status] ?? $statusColors['pending'];
                             @endphp
                             <span class="px-3 py-1 rounded-full border {{ $color }} text-[9px] font-black uppercase tracking-widest">
@@ -132,12 +133,22 @@
                                     <i data-lucide="eye" class="w-4 h-4"></i>
                                 </button>
                                 
-                                @if($wo->status === 'pending')
+                                @if(in_array($wo->status, ['draft', 'pending']))
                                 <form action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="status" value="ready_to_production">
-                                    <button type="submit" class="p-2 bg-indigo-600/10 hover:bg-indigo-600 rounded-xl text-indigo-500 hover:text-white transition-all shadow-lg" title="Mark as Ready">
+                                    <button type="submit" class="p-2 bg-indigo-600/10 hover:bg-indigo-600 rounded-xl text-indigo-500 hover:text-white transition-all shadow-lg" title="Mark as Ready (Lock Material)">
                                         <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                                @endif
+                                
+                                @if($wo->status === 'ready_to_production')
+                                <form action="{{ route('production.work_orders.update_status', $wo->id) }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="status" value="draft">
+                                    <button type="submit" class="p-2 bg-amber-600/10 hover:bg-amber-600 rounded-xl text-amber-500 hover:text-white transition-all shadow-lg" title="Back to Draft (Unlock Material)">
+                                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
                                     </button>
                                 </form>
                                 @endif
@@ -252,6 +263,7 @@
         
         // Status
         const statusColors = {
+            'draft': 'bg-slate-700/50 text-slate-300 border-slate-500/50',
             'pending': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
             'ready_to_production': 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
             'in_progress': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',

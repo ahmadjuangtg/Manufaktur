@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
-use App\Models\StockTransaction;
+use App\Models\InventoryStock;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 
@@ -11,17 +11,26 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermission('dashboard_view')) {
+            $user = auth()->user();
+            if ($user->hasPermission('shop_floor_view')) return redirect()->route('shop_floor.index');
+            if ($user->hasPermission('inventory_view')) return redirect()->route('inventory.index');
+            if ($user->hasPermission('order_view')) return redirect()->route('orders.requests.index');
+            if ($user->hasPermission('production_wo_view')) return redirect()->route('production.work_orders.index');
+            
+            // If no module access, show a simple welcome message
+            return view('welcome_simple');
+        }
+
         // 1. Item & Stock Stats
         $total_sku = Item::count();
         
-        $stock_stats = \App\Models\StockTransaction::selectRaw('SUM(CASE WHEN type = "IN" THEN quantity ELSE -quantity END) as balance')
-            ->first();
-        $total_stock = $stock_stats->balance ?? 0;
+        $total_stock = InventoryStock::sum('current_stock');
 
         $stock_by_category = \App\Models\Category::leftJoin('items', 'categories.id', '=', 'items.category_id')
-            ->leftJoin('stock_transactions', 'items.id', '=', 'stock_transactions.item_id')
+            ->leftJoin('inventory_stocks', 'items.id', '=', 'inventory_stocks.item_id')
             ->select('categories.name')
-            ->selectRaw('SUM(CASE WHEN stock_transactions.type = "IN" THEN stock_transactions.quantity ELSE -stock_transactions.quantity END) as balance')
+            ->selectRaw('SUM(inventory_stocks.current_stock) as balance')
             ->groupBy('categories.id', 'categories.name')
             ->having('balance', '>', 0)
             ->orderBy('balance', 'desc')

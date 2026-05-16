@@ -194,7 +194,8 @@
         document.getElementById('role_name').value = role.name;
         
         document.querySelectorAll('.perm-checkbox').forEach(cb => {
-            cb.checked = role.permissions && role.permissions.includes(cb.value);
+            const perms = Array.isArray(role.permissions) ? role.permissions : Object.values(role.permissions || {});
+            cb.checked = perms.includes(cb.value);
         });
         
         document.getElementById('modal').classList.remove('hidden');

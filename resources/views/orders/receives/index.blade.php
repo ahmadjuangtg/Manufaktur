@@ -52,7 +52,7 @@
 
 <!-- Receive Modal -->
 <div id="receiveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-2xl rounded-2xl shadow-2xl">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-4xl rounded-2xl shadow-2xl">
         <div class="p-8 border-b border-white/5 bg-slate-800/50 rounded-t-2xl flex justify-between items-center">
             <h3 class="text-xl font-bold text-white">Input Barang Masuk (<span id="poLabel"></span>)</h3>
             <button onclick="closeReceiveModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -67,6 +67,11 @@
                     <option value="{{ $w->id }}">{{ $w->name }}</option>
                     @endforeach
                 </select>
+            </div>
+
+            <div class="space-y-3 mb-8">
+                <label class="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Keterangan Penerimaan (Opsional)</label>
+                <textarea name="note" rows="2" placeholder="Tambahkan catatan khusus penerimaan jika ada..." class="w-full bg-[#0f172a] border border-white/10 rounded-xl py-4 px-6 focus:border-indigo-500 outline-none text-white text-sm font-bold shadow-inner resize-none"></textarea>
             </div>
 
             <div id="receiveItemList" class="space-y-6">

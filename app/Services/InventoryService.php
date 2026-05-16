@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\InventoryStock;
 use App\Models\StockMutation;
 use App\Models\StockMutationDetail;
 use App\Models\StockTransaction;
@@ -39,6 +40,41 @@ class InventoryService
     }
 
     /**
+     * Process / Approve a Mutation (Locking Stock)
+     */
+    public function approveMutation(int $id)
+    {
+        return DB::transaction(function () use ($id) {
+            $mutation = StockMutation::with('details')->findOrFail($id);
+            
+            if ($mutation->status !== 'PENDING') {
+                throw new \Exception("Hanya mutasi yang berstatus PENDING yang dapat disetujui.");
+            }
+
+            foreach ($mutation->details as $detail) {
+                // Lock stock in source warehouse
+                StockTransaction::create([
+                    'item_id' => $detail->item_id,
+                    'warehouse_id' => $mutation->from_warehouse_id,
+                    'type' => 'LOCK_IN',
+                    'quantity' => $detail->quantity,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                    'note' => 'Booking Mutasi ke ' . $mutation->toWarehouse->name,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+
+            $mutation->update([
+                'status' => 'APPROVED',
+                'approved_by' => Auth::id(),
+                'approved_at' => now()
+            ]);
+
+            return $mutation;
+        });
+    }
+
+    /**
      * Process / Complete a Mutation (Transferring Stock)
      */
     public function completeMutation(int $id)
@@ -51,13 +87,24 @@ class InventoryService
             }
 
             foreach ($mutation->details as $detail) {
+                // 0. Release Lock from source
+                StockTransaction::create([
+                    'item_id' => $detail->item_id,
+                    'warehouse_id' => $mutation->from_warehouse_id,
+                    'type' => 'LOCK_OUT',
+                    'quantity' => $detail->quantity,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                    'note' => 'Pelepasan Booking Mutasi ke ' . $mutation->toWarehouse->name,
+                    'user_id' => Auth::id(),
+                ]);
+
                 // 1. Reduce from source
                 StockTransaction::create([
                     'item_id' => $detail->item_id,
                     'warehouse_id' => $mutation->from_warehouse_id,
                     'type' => 'OUT',
                     'quantity' => $detail->quantity,
-                    'reference' => 'MUTATION-' . $mutation->reference_no,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
                     'note' => 'Mutation to ' . $mutation->toWarehouse->name,
                     'user_id' => Auth::id(),
                 ]);
@@ -68,7 +115,7 @@ class InventoryService
                     'warehouse_id' => $mutation->to_warehouse_id,
                     'type' => 'IN',
                     'quantity' => $detail->quantity,
-                    'reference' => 'MUTATION-' . $mutation->reference_no,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
                     'note' => 'Mutation from ' . $mutation->fromWarehouse->name,
                     'user_id' => Auth::id(),
                 ]);
@@ -88,12 +135,10 @@ class InventoryService
      */
     public function getStockBalance(int $itemId, int $warehouseId)
     {
-        $sums = StockTransaction::where('item_id', $itemId)
+        $stock = InventoryStock::where('item_id', $itemId)
             ->where('warehouse_id', $warehouseId)
-            ->select('type', DB::raw('SUM(quantity) as total'))
-            ->groupBy('type')
-            ->pluck('total', 'type');
+            ->first();
 
-        return ($sums['IN'] ?? 0) - ($sums['OUT'] ?? 0);
+        return $stock ? $stock->available_stock : 0;
     }
 }

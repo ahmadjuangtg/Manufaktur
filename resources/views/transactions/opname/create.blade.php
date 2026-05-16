@@ -98,7 +98,7 @@
 
 <!-- Edit Detail Modal -->
 <div id="editModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden">
         <div class="p-8 border-b border-white/5 bg-slate-800/50 flex justify-between items-center">
             <h3 class="text-sm font-black text-white uppercase tracking-widest">Audit Detail</h3>
             <button onclick="closeEditModal()" class="text-slate-400 hover:text-white transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>

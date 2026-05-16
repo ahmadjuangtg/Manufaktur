@@ -48,8 +48,23 @@
                         </div>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        @if(($item->role->name ?? '') !== 'Super Administrator')
-                        <button class="p-2 text-slate-500 hover:text-indigo-400"><i data-lucide="shield-alert" class="w-4 h-4"></i></button>
+                        @if(($item->role->name ?? '') !== 'Super Administrator' && $item->id !== auth()->id())
+                        <div class="flex justify-end gap-2">
+                            @php
+                                $userData = [
+                                    "id" => $item->id,
+                                    "name" => $item->name,
+                                    "email" => $item->email,
+                                    "role_id" => $item->role_id,
+                                    "warehouses" => $item->warehouses->pluck("id")->toArray()
+                                ];
+                            @endphp
+                            <button onclick='openEditModal(@json($userData))' class="p-2 text-slate-500 hover:text-indigo-400 bg-indigo-500/0 hover:bg-indigo-500/10 rounded-lg transition-all"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                            <form action="{{ route('accounts.delete', $item->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus user ini?')">
+                                @csrf
+                                <button type="submit" class="p-2 text-slate-500 hover:text-rose-500 bg-rose-500/0 hover:bg-rose-500/10 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </form>
+                        </div>
                         @else
                         <span class="text-[9px] font-bold text-slate-600 bg-slate-800/50 px-2 py-1 rounded">SYSTEM LOCKED</span>
                         @endif
@@ -83,8 +98,8 @@
                         <input type="email" name="email" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Password*</label>
-                        <input type="password" name="password" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" required>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Password</label>
+                        <input type="password" name="password" id="user_password" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white" placeholder="Kosongkan jika tidak ingin mengubah password">
                     </div>
                     
                     <div class="md:col-span-2">
@@ -102,7 +117,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             @foreach($warehouses as $wh)
                             <label class="flex items-center gap-3 p-3 rounded-xl bg-[#1e293b] border border-white/5 cursor-pointer hover:border-indigo-500 transition-all">
-                                <input type="checkbox" name="warehouse_ids[]" value="{{ $wh->id }}" class="w-4 h-4 rounded border-white/10 bg-slate-800 text-indigo-600">
+                                <input type="checkbox" name="warehouse_ids[]" value="{{ $wh->id }}" id="wh_{{ $wh->id }}" class="warehouse-checkbox w-4 h-4 rounded border-white/10 bg-slate-800 text-indigo-600">
                                 <span class="text-xs text-slate-300 font-bold">{{ $wh->name }}</span>
                             </label>
                             @endforeach
@@ -113,13 +128,42 @@
         </div>
         <div class="p-8 border-t border-white/5 bg-slate-800/50 flex justify-end gap-3 shrink-0">
             <button onclick="closeModal()" class="px-6 py-2 text-slate-500 font-bold">Batal</button>
-            <button type="submit" form="userForm" class="bg-indigo-600 text-white px-10 py-3 rounded-xl font-bold shadow-xl">Create Account</button>
+            <button type="submit" form="userForm" id="btnSubmit" class="bg-indigo-600 text-white px-10 py-3 rounded-xl font-bold shadow-xl">Create Account</button>
         </div>
     </div>
 </div>
 
 <script>
-    function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+    function openModal() { 
+        document.querySelector('#modal h3').innerText = 'Register New Account';
+        document.getElementById('userForm').action = "{{ route('accounts.store') }}";
+        document.querySelector('input[name="name"]').value = '';
+        document.querySelector('input[name="email"]').value = '';
+        document.querySelector('input[name="password"]').required = true;
+        document.querySelector('input[name="password"]').placeholder = 'Input password';
+        document.querySelector('select[name="role_id"]').value = '';
+        document.querySelectorAll('.warehouse-checkbox').forEach(cb => cb.checked = false);
+        document.getElementById('btnSubmit').innerText = 'Create Account';
+        document.getElementById('modal').classList.remove('hidden'); 
+    }
+
+    function openEditModal(user) {
+        document.querySelector('#modal h3').innerText = 'Edit Account: ' + user.name;
+        document.getElementById('userForm').action = "/security/accounts/update/" + user.id;
+        document.querySelector('input[name="name"]').value = user.name;
+        document.querySelector('input[name="email"]').value = user.email;
+        document.querySelector('input[name="password"]').required = false;
+        document.querySelector('input[name="password"]').placeholder = 'Kosongkan jika tidak diubah';
+        document.querySelector('select[name="role_id"]').value = user.role_id;
+        
+        document.querySelectorAll('.warehouse-checkbox').forEach(cb => {
+            cb.checked = user.warehouses.includes(parseInt(cb.value));
+        });
+
+        document.getElementById('btnSubmit').innerText = 'Save Changes';
+        document.getElementById('modal').classList.remove('hidden'); 
+    }
+
     function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 </script>
 @endsection

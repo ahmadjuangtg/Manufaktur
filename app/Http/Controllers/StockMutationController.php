@@ -39,7 +39,9 @@ class StockMutationController extends Controller
             ->latest()
             ->get();
         
-        $warehouses = Warehouse::all();
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
+        $allWarehouses = Warehouse::all();
         $items = Item::with('unit')->get();
         $workOrders = WorkOrder::whereIn('status', ['pending', 'ready_to_production', 'in_progress'])
             ->latest()
@@ -47,7 +49,7 @@ class StockMutationController extends Controller
 
         $selected_wo_id = request('work_order_id');
         
-        return view('transactions.mutations.request', compact('data', 'warehouses', 'items', 'workOrders', 'selected_wo_id'));
+        return view('transactions.mutations.request', compact('data', 'warehouses', 'allWarehouses', 'items', 'workOrders', 'selected_wo_id'));
     }
 
     public function storeRequest(Request $request)
@@ -90,20 +92,21 @@ class StockMutationController extends Controller
         }
         
         $data = $query->latest()->get();
-        $warehouses = Warehouse::all();
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
+        $allWarehouses = Warehouse::all();
         
-        return view('transactions.mutations.approval', compact('data', 'warehouses'));
+        return view('transactions.mutations.approval', compact('data', 'warehouses', 'allWarehouses'));
     }
 
     public function approve($id)
     {
-        $mutation = StockMutation::findOrFail($id);
-        $mutation->update([
-            'status' => 'APPROVED',
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
-        return redirect()->back()->with('success', 'Permintaan mutasi disetujui.');
+        try {
+            $this->inventoryService->approveMutation($id);
+            return redirect()->back()->with('success', 'Permintaan mutasi disetujui dan stok telah di-booking (Lock).');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
     }
 
     public function reject(Request $request, $id)
@@ -176,8 +179,10 @@ class StockMutationController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        $warehouses = Warehouse::all();
-        return view('transactions.mutations.index', compact('data', 'warehouses'));
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
+        $allWarehouses = Warehouse::all();
+        return view('transactions.mutations.index', compact('data', 'warehouses', 'allWarehouses'));
     }
 
     public function show($id)

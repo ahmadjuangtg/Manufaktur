@@ -38,18 +38,33 @@ class User extends Authenticatable
     public function hasPermission($permission)
     {
         if (!$this->role) return false;
-        if (in_array('all', $this->role->permissions ?? [])) return true;
+        $userPerms = $this->role->permissions ?? [];
+        if (in_array('all', $userPerms)) return true;
+        if (in_array($permission, $userPerms)) return true;
 
-        // If user has the specific permission, return true
-        if (in_array($permission, $this->role->permissions ?? [])) return true;
+        // Module-wide permission fallback: 
+        // If checking for 'order_view', allow if they have ANY 'order_***_view'
+        if (str_ends_with($permission, '_view')) {
+            $module = str_replace('_view', '', $permission);
+            foreach ($userPerms as $p) {
+                if (str_starts_with($p, $module . '_')) return true;
+            }
+        }
 
-        // Fallback: If user has '[module]_view', allow all actions for that module
-        // Example: if they have 'master_item_view', they also get 'master_item_create' etc.
+        // Action fallback: 
+        // If checking for 'master_item_create', allow if they have 'master_item_view'
         if (str_contains($permission, '_')) {
             $parts = explode('_', $permission);
             array_pop($parts);
             $moduleBase = implode('_', $parts);
-            return in_array($moduleBase . '_view', $this->role->permissions ?? []);
+            if (in_array($moduleBase . '_view', $userPerms)) return true;
+            
+            // Second level fallback (e.g. master_data_view allows master_item_view)
+            if (count($parts) > 1) {
+                array_pop($parts);
+                $rootBase = implode('_', $parts);
+                if (in_array($rootBase . '_view', $userPerms)) return true;
+            }
         }
 
         return false;

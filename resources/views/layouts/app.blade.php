@@ -238,7 +238,7 @@
             </a>
             @endif
 
-            @if(Auth::user()->hasPermission('inventory_view') || Auth::user()->hasPermission('stock_opname_view') || Auth::user()->hasPermission('stock_card_view'))
+            @if(Auth::user()->hasPermission('inventory_view') || Auth::user()->hasPermission('stock_opname_view') || Auth::user()->hasPermission('stock_opname_approval_view') || Auth::user()->hasPermission('stock_mutation_view') || Auth::user()->hasPermission('stock_mutation_approval_view') || Auth::user()->hasPermission('stock_card_view'))
             <div class="pt-8 pb-3 px-4 text-[12px] font-black text-slate-500 uppercase tracking-[0.2em]">Transaksi</div>
             @if(Auth::user()->hasPermission('inventory_view'))
             <a href="{{ route('inventory.index') }}" class="sidebar-item {{ Request::is('transactions/inventory*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">

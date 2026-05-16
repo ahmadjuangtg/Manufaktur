@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Models\StockTransaction::observe(\App\Observers\StockTransactionObserver::class);
+
         // Global eager loading for user roles to optimize permission checks in the sidebar
         if (request()->is('login') || request()->is('logout')) return;
         

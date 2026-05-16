@@ -22,7 +22,7 @@ class ProductionService
                 'production_template_id' => $template->id,
                 'customer_id' => $data['customer_id'] ?? null,
                 'production_line' => $data['production_line'] ?? 1,
-                'status' => 'pending',
+                'status' => 'draft',
                 'priority_id' => $data['priority_id'] ?? null,
                 'total_batch' => $data['total_batch'] ?? 1,
                 'note' => $data['note'] ?? null,
@@ -82,7 +82,7 @@ class ProductionService
                 'stage_code' => $data['stage_code'] ?? null,
                 'composition_code' => $data['composition_code'] ?? null,
                 'notes' => $data['notes'] ?? null,
-                'status' => 'pending'
+                'status' => 'draft'
             ]);
 
             if (isset($data['products'])) {
@@ -129,8 +129,131 @@ class ProductionService
      */
     public function updateStatus(int $id, string $status)
     {
-        $wo = WorkOrder::findOrFail($id);
-        $wo->update(['status' => $status]);
-        return $wo;
+        $wo = WorkOrder::with(['stages.items', 'products'])->findOrFail($id);
+        $oldStatus = $wo->status;
+        
+        if ($oldStatus === $status) return $wo;
+
+        return DB::transaction(function() use ($wo, $status, $oldStatus) {
+            $wo->update(['status' => $status]);
+            $mainWarehouseId = 1; // Default warehouse logic
+            
+            // DRAFT -> READY_TO_PRODUCTION: LOCK MATERIALS
+            if ($status === 'ready_to_production' && in_array($oldStatus, ['draft', 'pending'])) {
+                foreach ($wo->stages as $stage) {
+                    foreach ($stage->items as $item) {
+                        if ($item->type === 'MATERIAL') {
+                            \App\Models\StockTransaction::create([
+                                'warehouse_id' => $mainWarehouseId,
+                                'item_id' => $item->item_id,
+                                'type' => 'LOCK_IN',
+                                'quantity' => $item->quantity_total,
+                                'reference_no' => $wo->wo_number,
+                                'user_id' => Auth::id(),
+                                'note' => 'Booking WO: ' . $wo->wo_number
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // READY -> DRAFT (Cancel Booking): UNLOCK MATERIALS
+            if ($status === 'draft' && $oldStatus === 'ready_to_production') {
+                foreach ($wo->stages as $stage) {
+                    foreach ($stage->items as $item) {
+                        if ($item->type === 'MATERIAL') {
+                            \App\Models\StockTransaction::create([
+                                'warehouse_id' => $mainWarehouseId,
+                                'item_id' => $item->item_id,
+                                'type' => 'LOCK_OUT',
+                                'quantity' => $item->quantity_total,
+                                'reference_no' => $wo->wo_number,
+                                'user_id' => Auth::id(),
+                                'note' => 'Batal Booking WO: ' . $wo->wo_number
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // READY -> IN_PROGRESS: SHADOW FINISHED GOODS
+            if ($status === 'in_progress' && in_array($oldStatus, ['ready_to_production', 'pending'])) {
+                foreach ($wo->products as $prod) {
+                    \App\Models\StockTransaction::create([
+                        'warehouse_id' => $mainWarehouseId,
+                        'item_id' => $prod->item_id,
+                        'type' => 'SHADOW_IN',
+                        'quantity' => $prod->quantity,
+                        'reference_no' => $wo->wo_number,
+                        'user_id' => Auth::id(),
+                        'note' => 'Ekspektasi Hasil WO: ' . $wo->wo_number
+                    ]);
+                }
+            }
+
+            // IN_PROGRESS -> COMPLETED: CONSUME MATERIALS AND PRODUCE FINISHED GOODS
+            if ($status === 'completed' && $oldStatus === 'in_progress') {
+                // 1. Consume Materials (Release Lock + Physical OUT)
+                foreach ($wo->stages as $stage) {
+                    foreach ($stage->items as $item) {
+                        if ($item->type === 'MATERIAL') {
+                            // Find lock
+                            $lock = \App\Models\StockTransaction::where('reference_no', $wo->wo_number)
+                                ->where('item_id', $item->item_id)
+                                ->where('type', 'LOCK_IN')
+                                ->first();
+                            
+                            if ($lock) {
+                                \App\Models\StockTransaction::create([
+                                    'warehouse_id' => $lock->warehouse_id,
+                                    'item_id' => $item->item_id,
+                                    'type' => 'LOCK_OUT',
+                                    'quantity' => $item->quantity_total,
+                                    'reference_no' => $wo->wo_number,
+                                    'user_id' => Auth::id(),
+                                    'note' => 'Realisasi Produksi WO: ' . $wo->wo_number
+                                ]);
+                            }
+
+                            // Decrease Physical
+                            \App\Models\StockTransaction::create([
+                                'warehouse_id' => $lock ? $lock->warehouse_id : $mainWarehouseId,
+                                'item_id' => $item->item_id,
+                                'type' => 'OUT',
+                                'quantity' => $item->quantity_total,
+                                'reference_no' => $wo->wo_number,
+                                'user_id' => Auth::id(),
+                                'note' => 'Pemakaian Bahan Baku WO: ' . $wo->wo_number
+                            ]);
+                        }
+                    }
+                }
+
+                // 2. Realize Finished Goods (Release Shadow)
+                // Note: The physical IN is handled by verifyHandover in ProductionReportController 
+                // if they strictly use the handover module. But if they don't, we should add it here.
+                // Assuming Aori uses Handover module for FG receipt:
+                foreach ($wo->products as $prod) {
+                    $shadow = \App\Models\StockTransaction::where('reference_no', $wo->wo_number)
+                        ->where('item_id', $prod->item_id)
+                        ->where('type', 'SHADOW_IN')
+                        ->first();
+                        
+                    if ($shadow) {
+                        \App\Models\StockTransaction::create([
+                            'warehouse_id' => $shadow->warehouse_id,
+                            'item_id' => $prod->item_id,
+                            'type' => 'SHADOW_OUT',
+                            'quantity' => $prod->quantity,
+                            'reference_no' => $wo->wo_number,
+                            'user_id' => Auth::id(),
+                            'note' => 'Realisasi Hasil WO: ' . $wo->wo_number
+                        ]);
+                    }
+                }
+            }
+
+            return $wo;
+        });
     }
 }

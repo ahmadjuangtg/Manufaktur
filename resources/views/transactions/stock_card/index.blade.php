@@ -25,7 +25,7 @@
         </form>
     </div>
 
-    <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-slate-900/20">
+    <div class="glass-card rounded-[2rem] border border-white/5 bg-slate-900/20">
         <div class="p-8 border-b border-white/5 bg-slate-800/30">
             <h4 class="text-[12px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
                 <span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
@@ -33,12 +33,15 @@
             </h4>
         </div>
         <table class="w-full text-left">
-            <thead>
-                <tr class="bg-slate-800/50 text-slate-400 text-[11px] font-black uppercase tracking-[0.3em] border-b border-white/5">
+            <thead class="sticky top-[-1.5rem] lg:top-[-2.5rem] z-20">
+                <tr class="bg-[#1e293b] backdrop-blur-md text-slate-400 text-[11px] font-black uppercase tracking-[0.3em] border-b border-white/5">
                     <th class="px-8 py-5">SKU</th>
                     <th class="px-8 py-5">Nama Produk</th>
                     <th class="px-8 py-5">Kategori</th>
-                    <th class="px-8 py-5 text-center">Stok Saat Ini</th>
+                    <th class="px-8 py-5 text-center">Current Stock</th>
+                    <th class="px-8 py-5 text-center">Lock Stock</th>
+                    <th class="px-8 py-5 text-center">Available Stock</th>
+                    <th class="px-8 py-5 text-center">Shadow Stock</th>
                     <th class="px-8 py-5 text-center">Satuan</th>
                     <th class="px-8 py-5 text-right">Aksi</th>
                 </tr>
@@ -51,8 +54,17 @@
                     <td class="px-8 py-5">
                         <span class="text-[11px] font-black bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-white/5 uppercase tracking-tighter">{{ $i->category->name ?? '-' }}</span>
                     </td>
-                    <td class="px-8 py-5 text-center font-black text-lg {{ $i->current_stock > 0 ? 'text-emerald-500' : ($i->current_stock < 0 ? 'text-rose-500' : 'text-slate-600') }}">
+                    <td class="px-8 py-5 text-center font-black text-lg {{ $i->current_stock > 0 ? 'text-white' : 'text-slate-600' }}">
                         {{ number_format($i->current_stock) }}
+                    </td>
+                    <td class="px-8 py-5 text-center font-bold text-rose-400">
+                        {{ number_format($i->lock_stock) }}
+                    </td>
+                    <td class="px-8 py-5 text-center font-black text-xl {{ ($i->current_stock - $i->lock_stock) > 0 ? 'text-emerald-500' : 'text-rose-500' }}">
+                        {{ number_format($i->current_stock - $i->lock_stock) }}
+                    </td>
+                    <td class="px-8 py-5 text-center font-bold text-amber-400">
+                        {{ number_format($i->shadow_stock) }}
                     </td>
                     <td class="px-8 py-5 text-center text-slate-500 text-sm font-bold uppercase">{{ $i->unit->name ?? '-' }}</td>
                     <td class="px-8 py-5 text-right">
@@ -62,7 +74,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-8 py-20 text-center text-slate-500 italic">Produk tidak ditemukan.</td></tr>
+                <tr><td colspan="9" class="px-8 py-20 text-center text-slate-500 italic">Produk tidak ditemukan.</td></tr>
                 @endforelse
             </tbody>
         </table>

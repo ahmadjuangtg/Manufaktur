@@ -11,7 +11,7 @@
             <form action="{{ route('mutations.request.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
                 <select name="from_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
                     <option value="">Asal: Semua</option>
-                    @foreach($warehouses as $w)
+                    @foreach($allWarehouses as $w)
                     <option value="{{ $w->id }}" {{ request('from_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
                     @endforeach
                 </select>
@@ -139,7 +139,7 @@
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-3 ml-1">Gudang Asal (Pengirim)*</label>
                         <select name="from_warehouse_id" id="modal_from_warehouse_id" onchange="checkWarehouses(this); document.querySelectorAll('.item-selector').forEach(s => updateRowInfo(s));" class="w-full bg-slate-900/50 border border-white/10 rounded-2xl py-4 px-6 focus:border-indigo-500 outline-none text-white font-bold text-sm shadow-inner transition-all appearance-none" required>
                             <option value="">Pilih Gudang Asal</option>
-                            @foreach($warehouses as $w)
+                            @foreach($allWarehouses as $w)
                             <option value="{{ $w->id }}">{{ $w->name }}</option>
                             @endforeach
                         </select>

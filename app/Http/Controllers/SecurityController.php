@@ -84,4 +84,51 @@ class SecurityController extends Controller
 
         return redirect()->back()->with('success', 'User berhasil ditambahkan');
     }
+
+    public function updateAccount(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        $request->validate([
+            'name' => 'required',
+            'email' => 'required|email|unique:users,email,'.$id,
+            'role_id' => 'required',
+        ]);
+
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'role_id' => $request->role_id,
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        if ($request->has('warehouse_ids')) {
+            $user->warehouses()->sync($request->warehouse_ids);
+        } else {
+            $user->warehouses()->detach();
+        }
+
+        return redirect()->back()->with('success', 'User berhasil diperbarui');
+    }
+
+    public function destroyAccount($id)
+    {
+        $user = User::findOrFail($id);
+        
+        if ($user->role && $user->role->name === 'Super Administrator') {
+            return redirect()->back()->with('error', 'Akun Super Administrator tidak dapat dihapus');
+        }
+
+        if ($user->id === auth()->id()) {
+            return redirect()->back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri');
+        }
+
+        $user->delete();
+        return redirect()->back()->with('success', 'User berhasil dihapus');
+    }
 }

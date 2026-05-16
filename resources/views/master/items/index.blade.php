@@ -22,23 +22,23 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="glass-card p-6 rounded-xl stat-card-glow flex items-center gap-4 border border-white/5">
             <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-500"><i data-lucide="package" class="w-6 h-6"></i></div>
-            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Total SKUs</p><p class="text-xl font-black text-white">{{ $data->total() }}</p></div>
+            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Total SKUs</p><p class="text-xl font-black text-white">{{ $total_items }}</p></div>
         </div>
         <div class="glass-card p-6 rounded-xl flex items-center gap-4 border border-white/5">
             <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
-            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Active Items</p><p class="text-xl font-black text-white">{{ $data->total() }}</p></div>
+            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Active Items</p><p class="text-xl font-black text-white">{{ $total_items }}</p></div>
         </div>
         <div class="glass-card p-6 rounded-xl flex items-center gap-4 border border-white/5">
             <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
-            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Low Stock</p><p class="text-xl font-black text-white">0</p></div>
+            <div><p class="text-slate-500 text-[12px] font-bold uppercase tracking-widest">Low Stock (< 10)</p><p class="text-xl font-black text-white">{{ $low_stock_count }}</p></div>
         </div>
     </div>
 
     <!-- Table Section -->
-    <div class="glass-card rounded-2xl overflow-hidden border border-white/5 bg-slate-900/20">
+    <div class="glass-card rounded-2xl border border-white/5 bg-slate-900/20">
         <table class="w-full text-left">
-            <thead>
-                <tr class="bg-slate-800/50 text-slate-400 text-[12px] font-black uppercase tracking-widest border-b border-white/5">
+            <thead class="sticky top-[-1.5rem] lg:top-[-2.5rem] z-20">
+                <tr class="bg-[#1e293b] backdrop-blur-md text-slate-400 text-[12px] font-black uppercase tracking-widest border-b border-white/5">
                     <th class="px-8 py-5">Item Identifier</th>
                     <th class="px-8 py-5">Product Details</th>
                     <th class="px-8 py-5">Classification</th>

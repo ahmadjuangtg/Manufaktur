@@ -18,7 +18,7 @@
 
                 <select name="to_warehouse_id" onchange="this.form.submit()" class="bg-slate-800/50 border border-white/5 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
                     <option value="">Tujuan: Semua</option>
-                    @foreach($warehouses as $w)
+                    @foreach($allWarehouses as $w)
                     <option value="{{ $w->id }}" {{ request('to_warehouse_id') == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
                     @endforeach
                 </select>
@@ -41,10 +41,10 @@
         </div>
     </div>
 
-    <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-slate-900/20">
+    <div class="glass-card rounded-[2rem] border border-white/5 bg-slate-900/20">
         <table class="w-full text-left">
-            <thead>
-                <tr class="bg-slate-800/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
+            <thead class="sticky top-[-1.5rem] lg:top-[-2.5rem] z-20">
+                <tr class="bg-[#1e293b] backdrop-blur-md text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
                     <th class="px-8 py-5">Ref No</th>
                     <th class="px-8 py-5">Rute Gudang</th>
                     <th class="px-8 py-5 text-center">Status</th>
@@ -100,11 +100,17 @@
                         </div>
                     </td>
                     <td class="px-8 py-5 flex justify-end items-center gap-2">
-                        @if($m->status == 'APPROVED')
+                        @php
+                            $isSuper = (Auth::user()->role->name ?? '') === 'Super Administrator';
+                            $userWarehouseIds = Auth::user()->warehouses->pluck('id')->toArray();
+                            $canSend = $isSuper || in_array($m->from_warehouse_id, $userWarehouseIds);
+                            $canReceive = $isSuper || in_array($m->to_warehouse_id, $userWarehouseIds);
+                        @endphp
+                        @if($m->status == 'APPROVED' && $canSend)
                         <button onclick="sendMutation({{ $m->id }})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
                             <i data-lucide="truck" class="w-3 h-3"></i> Kirim Barang
                         </button>
-                        @elseif($m->status == 'SENDING')
+                        @elseif($m->status == 'SENDING' && $canReceive)
                         <button onclick="receiveMutation({{ $m->id }})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
                             <i data-lucide="check" class="w-3 h-3"></i> Terima Barang
                         </button>

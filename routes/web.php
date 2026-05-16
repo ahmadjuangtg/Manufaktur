@@ -19,7 +19,7 @@ Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/', [DashboardController::class, 'index'])->name('dashboard')->middleware('permission:dashboard_view');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     // MASTER DATA
     Route::prefix('master')->middleware('permission:master_data_view')->group(function () {
@@ -94,6 +94,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/price-lists/delete/{id}', [\App\Http\Controllers\PriceListController::class, 'destroy'])->name('price_lists.delete');
         Route::get('/price-lists/get-price', [\App\Http\Controllers\PriceListController::class, 'getPrice'])->name('price_lists.get_price');
         Route::get('/price-lists/check-warehouses', [\App\Http\Controllers\PriceListController::class, 'checkItemWarehouses'])->name('price_lists.check_warehouses');
+        Route::get('/suppliers/get-items/{id}', [MasterController::class, 'getSupplierItems'])->name('suppliers.get_items');
     });
 
     // SECURITY
@@ -105,10 +106,12 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/accounts', [SecurityController::class, 'indexAccount'])->name('accounts.index')->middleware('permission:master_account_view');
         Route::post('/accounts', [SecurityController::class, 'storeAccount'])->name('accounts.store');
+        Route::post('/accounts/update/{id}', [SecurityController::class, 'updateAccount'])->name('accounts.update');
+        Route::post('/accounts/delete/{id}', [SecurityController::class, 'destroyAccount'])->name('accounts.delete');
     });
 
     // ORDER MODULE
-    Route::prefix('orders')->group(function () {
+    Route::prefix('orders')->middleware('permission:order_view')->group(function () {
         Route::get('/requests', [\App\Http\Controllers\OrderController::class, 'indexRequest'])->name('orders.requests.index');
         Route::post('/requests', [\App\Http\Controllers\OrderController::class, 'storeRequest'])->name('orders.requests.store');
         
@@ -180,11 +183,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/stock-opname/approval', [TransactionController::class, 'indexOpnameApproval'])->name('opname.approval.index')->middleware('permission:stock_opname_approval_view');
         Route::get('/stock-opname/create', [TransactionController::class, 'createOpname'])->name('opname.create')->middleware('permission:stock_opname_create');
         Route::post('/stock-opname', [TransactionController::class, 'storeOpname'])->name('opname.store')->middleware('permission:stock_opname_create');
-        Route::post('/stock-opname/approve/{id}', [TransactionController::class, 'approveOpname'])->name('opname.approve')->middleware('permission:stock_opname_approve');
-        Route::post('/stock-opname/reject/{id}', [TransactionController::class, 'rejectOpname'])->name('opname.reject')->middleware('permission:stock_opname_approve');
+        Route::post('/stock-opname/approve/{id}', [TransactionController::class, 'approveOpname'])->name('opname.approve')->middleware('permission:stock_opname_approval_view');
+        Route::post('/stock-opname/reject/{id}', [TransactionController::class, 'rejectOpname'])->name('opname.reject')->middleware('permission:stock_opname_approval_view');
         Route::get('/stock-opname/get-stock', [TransactionController::class, 'getStock'])->name('opname.get_stock');
 
         Route::get('/stock-card', [TransactionController::class, 'indexStockCard'])->name('stock_card.index')->middleware('permission:stock_card_view');
+        Route::get('/stock-card/print/{id}', [TransactionController::class, 'printStockCard'])->name('stock_card.print')->middleware('permission:stock_card_view');
 
         // Mutation Routes
         Route::prefix('mutations')->group(function () {

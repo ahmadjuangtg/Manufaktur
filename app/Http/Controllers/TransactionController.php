@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\InventoryStock;
 use App\Models\StockOpname;
 use App\Models\StockTransaction;
 use App\Models\Warehouse;
@@ -42,21 +43,37 @@ class TransactionController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
         ]);
 
-        \DB::transaction(function() use ($request) {
-            foreach ($request->items as $item) {
-                StockTransaction::create([
-                    'item_id' => $item['item_id'],
-                    'warehouse_id' => $request->warehouse_id,
-                    'type' => $request->type,
-                    'quantity' => $item['quantity'],
-                    'reference_no' => $request->reference_no,
-                    'note' => $item['note'] ?? $request->note,
-                    'user_id' => Auth::id(),
-                ]);
-            }
-        });
+        try {
+            \DB::transaction(function() use ($request) {
+                foreach ($request->items as $item) {
+                    if ($request->type === 'OUT') {
+                        $inventory = InventoryStock::where('item_id', $item['item_id'])
+                            ->where('warehouse_id', $request->warehouse_id)
+                            ->first();
+                        
+                        $available = $inventory ? $inventory->available_stock : 0;
+                        if ($available < $item['quantity']) {
+                            $itemName = Item::find($item['item_id'])->name ?? $item['item_id'];
+                            throw new \Exception("Stok Tersedia (Available Stock) tidak mencukupi untuk {$itemName}. Tersedia: {$available}, Diminta: {$item['quantity']}");
+                        }
+                    }
 
-        return redirect()->back()->with('success', 'Transaksi multi-item berhasil disimpan');
+                    StockTransaction::create([
+                        'item_id' => $item['item_id'],
+                        'warehouse_id' => $request->warehouse_id,
+                        'type' => $request->type,
+                        'quantity' => $item['quantity'],
+                        'reference_no' => $request->reference_no,
+                        'note' => $item['note'] ?? $request->note,
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            });
+
+            return redirect()->back()->with('success', 'Transaksi multi-item berhasil disimpan');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     // Stock Opname
@@ -67,7 +84,16 @@ class TransactionController extends Controller
         $sort_by = $request->sort_by ?? 'created_at';
         $sort_order = $request->sort_order ?? 'desc';
 
+        $user_warehouses = Auth::user()->warehouses->pluck('id')->toArray();
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+
         $data = StockOpname::with(['item', 'warehouse', 'user', 'approver'])
+            ->when(!$is_superadmin && count($user_warehouses) > 0, function($q) use ($user_warehouses) {
+                $q->whereIn('warehouse_id', $user_warehouses);
+            })
+            ->when(!$is_superadmin && count($user_warehouses) === 0, function($q) {
+                $q->where('warehouse_id', -1);
+            })
             ->when($warehouse_id, function($q) use ($warehouse_id) {
                 $q->where('warehouse_id', $warehouse_id);
             })
@@ -85,7 +111,7 @@ class TransactionController extends Controller
         }
 
         $data = $data->paginate(20)->withQueryString();
-        $warehouses = Warehouse::all();
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
         
         return view('transactions.opname.index', compact('data', 'warehouses'));
     }
@@ -93,7 +119,8 @@ class TransactionController extends Controller
     public function createOpname()
     {
         $items = Item::with('unit')->select('id', 'code', 'name', 'unit_id')->get();
-        $warehouses = Warehouse::all();
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
         return view('transactions.opname.create', compact('items', 'warehouses'));
     }
 
@@ -102,10 +129,9 @@ class TransactionController extends Controller
         $item_id = $request->item_id;
         $warehouse_id = $request->warehouse_id;
 
-        $stock = StockTransaction::where('item_id', $item_id)
+        $stock = InventoryStock::where('item_id', $item_id)
             ->where('warehouse_id', $warehouse_id)
-            ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-            ->value('total') ?? 0;
+            ->value('current_stock') ?? 0;
 
         return response()->json(['stock' => (float)$stock]);
     }
@@ -121,10 +147,9 @@ class TransactionController extends Controller
 
         \DB::transaction(function() use ($request) {
             foreach ($request->items as $item) {
-                $system_qty = StockTransaction::where('item_id', $item['item_id'])
+                $system_qty = InventoryStock::where('item_id', $item['item_id'])
                     ->where('warehouse_id', $request->warehouse_id)
-                    ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-                    ->value('total') ?? 0;
+                    ->value('current_stock') ?? 0;
 
                 StockOpname::create([
                     'item_id' => $item['item_id'],
@@ -146,15 +171,24 @@ class TransactionController extends Controller
     {
         $warehouse_id = $request->warehouse_id;
 
+        $user_warehouses = Auth::user()->warehouses->pluck('id')->toArray();
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+
         $data = StockOpname::with(['item.unit', 'warehouse', 'user'])
             ->where('status', 'PENDING')
+            ->when(!$is_superadmin && count($user_warehouses) > 0, function($q) use ($user_warehouses) {
+                $q->whereIn('warehouse_id', $user_warehouses);
+            })
+            ->when(!$is_superadmin && count($user_warehouses) === 0, function($q) {
+                $q->where('warehouse_id', -1);
+            })
             ->when($warehouse_id, function($q) use ($warehouse_id) {
                 $q->where('warehouse_id', $warehouse_id);
             })
             ->latest()
             ->get();
             
-        $warehouses = Warehouse::all();
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
         return view('transactions.opname.approval', compact('data', 'warehouses'));
     }
 
@@ -224,25 +258,30 @@ class TransactionController extends Controller
                 ->paginate(50)
                 ->withQueryString();
             
-            $current_stock = StockTransaction::where('item_id', $item_id)
-                ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-                ->value('total') ?? 0;
+            $stock_data = InventoryStock::where('item_id', $item_id)
+                ->selectRaw('SUM(current_stock) as current_stock, SUM(lock_stock) as lock_stock, SUM(shadow_stock) as shadow_stock')
+                ->first();
+                
+            $current_stock = $stock_data->current_stock ?? 0;
+            $lock_stock = $stock_data->lock_stock ?? 0;
+            $shadow_stock = $stock_data->shadow_stock ?? 0;
+            $available_stock = max(0, $current_stock - $lock_stock);
 
-            $warehouse_stock = StockTransaction::where('item_id', $item_id)
-                ->join('warehouses', 'stock_transactions.warehouse_id', '=', 'warehouses.id')
-                ->select('warehouses.name')
-                ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity ELSE -quantity END) as total")
-                ->groupBy('warehouses.id', 'warehouses.name')
+            $warehouse_stock = InventoryStock::where('item_id', $item_id)
+                ->join('warehouses', 'inventory_stocks.warehouse_id', '=', 'warehouses.id')
+                ->select('warehouses.name', 'inventory_stocks.current_stock as total', 'inventory_stocks.lock_stock', 'inventory_stocks.shadow_stock')
                 ->get();
 
-            return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock', 'warehouse_stock'));
+            return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock', 'warehouse_stock'));
         }
 
-        // Optimized with single aggregate query to avoid N+1
+        // Optimized to join inventory_stocks
         $items = Item::with(['unit', 'category'])
-            ->leftJoin('stock_transactions', 'items.id', '=', 'stock_transactions.item_id')
+            ->leftJoin('inventory_stocks', 'items.id', '=', 'inventory_stocks.item_id')
             ->select('items.*')
-            ->selectRaw("SUM(CASE WHEN stock_transactions.type = 'IN' THEN stock_transactions.quantity ELSE -stock_transactions.quantity END) as current_stock")
+            ->selectRaw("SUM(inventory_stocks.current_stock) as current_stock")
+            ->selectRaw("SUM(inventory_stocks.lock_stock) as lock_stock")
+            ->selectRaw("SUM(inventory_stocks.shadow_stock) as shadow_stock")
             ->when($search, function($q) use ($search) {
                 $q->where('items.name', 'like', "%{$search}%")
                   ->orWhere('items.code', 'like', "%{$search}%");
@@ -252,5 +291,26 @@ class TransactionController extends Controller
             ->withQueryString();
 
         return view('transactions.stock_card.index', compact('items', 'search'));
+    }
+
+    public function printStockCard($id)
+    {
+        $item = Item::with('unit')->findOrFail($id);
+        
+        $transactions = StockTransaction::where('item_id', $id)
+            ->with('warehouse')
+            ->latest()
+            ->get(); // Fetch all without pagination for print
+        
+        $stock_data = InventoryStock::where('item_id', $id)
+            ->selectRaw('SUM(current_stock) as current_stock, SUM(lock_stock) as lock_stock, SUM(shadow_stock) as shadow_stock')
+            ->first();
+            
+        $current_stock = $stock_data->current_stock ?? 0;
+        $lock_stock = $stock_data->lock_stock ?? 0;
+        $shadow_stock = $stock_data->shadow_stock ?? 0;
+        $available_stock = max(0, $current_stock - $lock_stock);
+
+        return view('transactions.stock_card.print', compact('item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock'));
     }
 }

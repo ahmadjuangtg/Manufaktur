@@ -24,11 +24,12 @@
         </div>
     </div>
 
-    <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5 bg-slate-900/20">
+    <div class="glass-card rounded-[2rem] border border-white/5 bg-slate-900/20">
         <table class="w-full text-left">
-            <thead>
-                <tr class="bg-slate-800/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
-                    <th class="px-8 py-5">Item & Gudang</th>
+            <thead class="sticky top-[-1.5rem] lg:top-[-2.5rem] z-20">
+                <tr class="bg-[#1e293b] backdrop-blur-md text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] border-b border-white/5">
+                    <th class="px-8 py-5">Item Info</th>
+                    <th class="px-8 py-5">Lokasi Gudang</th>
                     <th class="px-8 py-5 text-center">System Qty</th>
                     <th class="px-8 py-5 text-center">Physical Qty</th>
                     <th class="px-8 py-5 text-center">Difference</th>
@@ -40,7 +41,10 @@
                 <tr class="hover:bg-white/5 transition-colors">
                     <td class="px-8 py-5">
                         <div class="text-xs text-white font-bold">{{ $o->item->name }}</div>
-                        <div class="text-[10px] text-slate-500 font-medium mt-1">{{ $o->warehouse->name }} | Oleh: {{ $o->user->name }}</div>
+                        <div class="text-[10px] text-slate-500 font-medium mt-1">Oleh: {{ $o->user->name }}</div>
+                    </td>
+                    <td class="px-8 py-5">
+                        <div class="text-[13px] text-indigo-400 font-black tracking-tight">{{ $o->warehouse->name }}</div>
                     </td>
                     <td class="px-8 py-5 text-center">
                         <span class="text-xs text-slate-400 font-bold">{{ $o->system_qty + 0 }}</span>
@@ -78,7 +82,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-8 py-20 text-center text-slate-500 italic">Tidak ada antrian persetujuan opname.</td></tr>
+                <tr><td colspan="6" class="px-8 py-20 text-center text-slate-500 italic">Tidak ada antrian persetujuan opname.</td></tr>
                 @endforelse
             </tbody>
         </table>

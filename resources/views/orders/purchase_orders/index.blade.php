@@ -59,7 +59,7 @@
 
 <!-- Modal Create PO -->
 <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-6xl rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-[1400px] rounded-2xl flex flex-col shadow-2xl overflow-hidden h-[90vh]">
         <div class="p-6 border-b border-white/5 flex justify-between items-center bg-slate-800/50">
             <h3 class="text-lg font-bold text-white">Buat Purchase Order</h3>
             <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -105,9 +105,14 @@
                                 </select>
                             </div>
                         </div>
-                        <button type="button" onclick="addItem()" class="text-xs font-black bg-indigo-500/10 text-indigo-400 px-4 py-2 rounded-lg hover:bg-indigo-500 hover:text-white transition-all flex items-center gap-2 uppercase tracking-widest">
-                            <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Item
-                        </button>
+                        <div class="flex gap-2">
+                            <button id="cleanupBtn" type="button" onclick="removeInvalidItems()" class="hidden text-xs font-black bg-rose-500/10 text-rose-500 px-4 py-2 rounded-lg hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2 uppercase tracking-widest border border-rose-500/20">
+                                <i data-lucide="filter-x" class="w-4 h-4"></i> Bersihkan Item Invalid
+                            </button>
+                            <button type="button" onclick="addItem()" class="text-xs font-black bg-indigo-500/10 text-indigo-400 px-4 py-2 rounded-lg hover:bg-indigo-500 hover:text-white transition-all flex items-center gap-2 uppercase tracking-widest">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah Item
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="bg-slate-900/40 rounded-2xl border border-white/5 overflow-hidden">
@@ -132,7 +137,7 @@
                                         </select>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <input type="number" name="items[0][quantity]" class="qty-input w-full bg-slate-800/50 border border-white/10 rounded-lg py-2 px-2 text-center text-white font-bold" value="1" oninput="calculateSubtotal(this)">
+                                        <input type="number" name="items[0][quantity]" class="qty-input w-full bg-slate-800/50 border border-white/10 rounded-lg py-2 px-3 text-center text-white font-bold text-[12px]" value="1" oninput="calculateSubtotal(this)">
                                     </td>
                                     <td class="px-6 py-4">
                                         <input type="hidden" name="items[0][price]" class="actual-price-input" value="0">
@@ -177,7 +182,7 @@
 
 <!-- Modal Detail PO -->
 <div id="detailModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
-    <div class="bg-[#1e293b] border border-white/10 w-full max-w-4xl rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-5xl rounded-[2.5rem] flex flex-col shadow-2xl overflow-hidden h-[85vh]">
         <div class="p-8 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white">
@@ -235,6 +240,94 @@
 
 <script>
     let itemIndex = 1;
+    let supplierItems = [];
+    let rowTemplate = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const firstRow = document.querySelector('.item-row');
+        if (firstRow) {
+            rowTemplate = firstRow.cloneNode(true);
+        }
+    });
+
+    async function validateItemsBySupplier() {
+        const supplierId = document.querySelector('select[name="supplier_id"]').value;
+        const cleanupBtn = document.getElementById('cleanupBtn');
+        
+        if (!supplierId) {
+            supplierItems = [];
+            cleanupBtn.classList.add('hidden');
+            // Reset warnings
+            document.querySelectorAll('.item-row').forEach(row => {
+                row.classList.remove('bg-rose-500/10', 'border-rose-500/20');
+                const warning = row.querySelector('.supplier-warning');
+                if (warning) warning.remove();
+            });
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/master/suppliers/get-items/${supplierId}`);
+            supplierItems = await resp.json();
+            let hasInvalid = false;
+            
+            document.querySelectorAll('.item-row').forEach(row => {
+                const itemIdInput = row.querySelector('input[type="hidden"][name$="[id]"]') || row.querySelector('select.item-select');
+                if (!itemIdInput) return;
+                
+                const itemId = itemIdInput.value;
+                
+                if (itemId && !supplierItems.includes(parseInt(itemId))) {
+                    hasInvalid = true;
+                    row.classList.add('bg-rose-500/10', 'border-rose-500/20');
+                    if (!row.querySelector('.supplier-warning')) {
+                        const nameTd = row.querySelector('td:first-child');
+                        const warning = document.createElement('div');
+                        warning.className = 'supplier-warning text-[9px] text-rose-500 font-black uppercase tracking-widest mt-1 p-1 bg-rose-500/5 rounded border border-rose-500/10 w-fit';
+                        warning.innerHTML = '<i data-lucide="alert-circle" class="w-2.5 h-2.5 inline mr-1"></i> Not in Supplier Price List';
+                        nameTd.appendChild(warning);
+                        lucide.createIcons();
+                    }
+                } else {
+                    row.classList.remove('bg-rose-500/10', 'border-rose-500/20');
+                    const warning = row.querySelector('.supplier-warning');
+                    if (warning) warning.remove();
+                }
+            });
+
+            if (hasInvalid) {
+                cleanupBtn.classList.remove('hidden');
+            } else {
+                cleanupBtn.classList.add('hidden');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function removeInvalidItems() {
+        Swal.fire({
+            title: 'BERSIHKAN ITEM?',
+            text: 'Item yang tidak terdaftar di supplier ini akan dihapus dari daftar PO.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'YA, HAPUS',
+            cancelButtonText: 'BATAL'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.querySelectorAll('.item-row').forEach(row => {
+                    if (row.classList.contains('bg-rose-500/10')) {
+                        row.remove();
+                    }
+                });
+                if (document.querySelectorAll('.item-row').length === 0) {
+                    addItem();
+                }
+                calculateGrandTotal();
+                validateItemsBySupplier();
+            }
+        });
+    }
+
+    document.querySelector('select[name="supplier_id"]').addEventListener('change', validateItemsBySupplier);
 
     function formatRupiah(angka) {
         var number_string = angka.toString().replace(/[^,\d]/g, ''),
@@ -287,6 +380,8 @@
         const row = select.closest('.item-row');
         if (!itemId) return;
 
+        validateItemsBySupplier(); // Validate when item changes
+
         try {
             const resp = await fetch(`/master/price-lists/get-price?item_id=${itemId}`);
             const data = await resp.json();
@@ -297,8 +392,9 @@
 
     function addItem() {
         const list = document.getElementById('itemList');
-        const firstRow = document.querySelector('.item-row');
-        const row = firstRow.cloneNode(true);
+        if (!rowTemplate) return;
+        
+        const row = rowTemplate.cloneNode(true);
         
         const select = row.querySelector('select');
         select.name = `items[${itemIndex}][id]`;
@@ -345,10 +441,13 @@
     document.getElementById('filterType').addEventListener('change', applyFilter);
 
     function removeItem(btn) {
-        if (document.querySelectorAll('.item-row').length > 1) {
-            btn.closest('.item-row').remove();
-            calculateGrandTotal();
+        const list = document.getElementById('itemList');
+        btn.closest('.item-row').remove();
+        
+        if (document.querySelectorAll('.item-row').length === 0) {
+            addItem();
         }
+        calculateGrandTotal();
     }
 
     const requestSelect = document.querySelector('select[name="item_request_id"]');
@@ -368,8 +467,15 @@
                 const resp = await fetch(`/orders/requests/get-details/${this.value}`);
                 const requestData = await resp.json();
                 
-                for (const detail of requestData.details) {
-                    await addItemFromRequest(detail);
+                if (requestData.details && requestData.details.length > 0) {
+                    for (const detail of requestData.details) {
+                        await addItemFromRequest(detail, false); // Don't validate inside loop
+                    }
+                    calculateGrandTotal(); // Added this
+                    validateItemsBySupplier(); // Validate once after all items added
+                } else {
+                    Swal.fire('Info', 'Semua item dalam request ini sudah diproses ke PO.', 'info');
+                    addItem();
                 }
             } catch (e) { console.error(e); }
         } else {
@@ -396,7 +502,7 @@
         form.submit();
     }
 
-    async function addItemFromRequest(detail) {
+    async function addItemFromRequest(detail, triggerValidation = true) {
         const list = document.getElementById('itemList');
         const row = document.createElement('tr');
         row.className = 'item-row border-b border-white/5 bg-indigo-500/5';
@@ -408,7 +514,7 @@
                 <div class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">From Request</div>
             </td>
             <td class="px-6 py-4">
-                <input type="number" name="items[${itemIndex}][quantity]" class="qty-input w-full bg-slate-900/50 border border-white/5 rounded-lg py-2 px-2 text-center text-slate-400 font-bold" value="${detail.quantity}" readonly>
+                <input type="number" name="items[${itemIndex}][quantity]" class="qty-input w-full bg-slate-900/50 border border-white/5 rounded-lg py-2 px-3 text-center text-slate-400 font-bold text-[12px]" value="${detail.quantity}" readonly>
             </td>
             <td class="px-6 py-4">
                 <input type="hidden" name="items[${itemIndex}][price]" class="actual-price-input" value="0">
@@ -418,7 +524,7 @@
                 <span class="subtotal-display text-emerald-400 font-bold">Rp 0</span>
             </td>
             <td class="px-6 py-4 text-right">
-                <!-- Row cancel removed per user request -->
+                <button type="button" onclick="removeItem(this)" class="text-rose-500 hover:bg-rose-500/10 p-2 rounded-lg transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </td>
         `;
         
@@ -436,6 +542,7 @@
         
         itemIndex++;
         lucide.createIcons();
+        if (triggerValidation) validateItemsBySupplier();
     }
 
     function viewDetail(po) {
