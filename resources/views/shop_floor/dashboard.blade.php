@@ -117,6 +117,7 @@
                                     $completedMutations = $active->workOrder->mutations->where('status', 'COMPLETED');
                                     $hasReceivedMaterial = $completedMutations->count() > 0;
                                     $pendingMutation = $active->workOrder->mutations->whereIn('status', ['PENDING', 'APPROVED', 'SENDING'])->first();
+                                    $anyReceived = $active->workOrder->mutations->flatMap->deliveries->count() > 0;
                                 @endphp
 
                                 <div class="flex justify-between items-center mb-4">
@@ -127,18 +128,38 @@
                                         <span class="text-[8px] font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 uppercase animate-pulse">Mutation: {{ $pendingMutation->status }}</span>
                                     @elseif($hasReceivedMaterial)
                                         <span class="text-[8px] font-black px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">Material Received</span>
+                                    @elseif($anyReceived)
+                                        <span class="text-[8px] font-black px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 uppercase">Material Partial</span>
                                     @endif
                                 </div>
 
                                 <div class="space-y-3">
                                     @forelse($active->items as $item)
-                                    <div class="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5 {{ !$hasReceivedMaterial ? 'opacity-40 grayscale cursor-not-allowed' : '' }}">
+                                    @php
+                                        $totalDelivered = $active->workOrder->mutations->flatMap->deliveries->where('item_id', $item->item_id)->sum('quantity');
+                                        $isSatisfied = $totalDelivered >= $item->quantity;
+                                        $hasSome = $totalDelivered > 0;
+                                    @endphp
+                                    <div class="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5 {{ !$hasSome ? 'opacity-40 grayscale cursor-not-allowed' : '' }}">
                                         <input type="checkbox" class="material-checkbox w-4 h-4 rounded bg-slate-800 border-white/10 text-indigo-600 focus:ring-indigo-500" 
-                                            {{ !$hasReceivedMaterial ? 'disabled' : '' }}
+                                            {{ !$hasSome ? 'disabled' : '' }}
                                             onchange="validateChecklist()">
                                         <div class="flex-1">
-                                            <p class="text-xs font-bold text-white">{{ $item->item->name }}</p>
-                                            <p class="text-[9px] text-slate-500 uppercase">{{ number_format($item->quantity, 2) }} {{ $item->item->unit->name }}</p>
+                                            <div class="flex justify-between items-start">
+                                                <p class="text-xs font-bold text-white">{{ $item->item->name }}</p>
+                                                @if($isSatisfied)
+                                                    <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 uppercase">Lengkap</span>
+                                                @elseif($hasSome)
+                                                    <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 uppercase">Parsial</span>
+                                                @else
+                                                    <span class="text-[8px] font-black px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 uppercase">Belum Ada</span>
+                                                @endif
+                                            </div>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <span class="text-[9px] text-slate-500">Minta: <strong>{{ number_format($item->quantity, 2) }} {{ $item->item->unit->name }}</strong></span>
+                                                <span class="text-[9px] text-slate-500">|</span>
+                                                <span class="text-[9px] text-slate-400">Realisasi: <strong class="{{ $hasSome ? 'text-indigo-400' : 'text-slate-500' }}">{{ number_format($totalDelivered, 2) }} {{ $item->item->unit->name }}</strong></span>
+                                            </div>
                                         </div>
                                     </div>
                                     @empty
@@ -146,13 +167,19 @@
                                     @endforelse
                                 </div>
 
-                                @if(!$hasReceivedMaterial)
+                                @if(!$anyReceived && !$pendingMutation)
                                 <button type="button" onclick="openRequestModal({{ $active->id }})" class="mt-6 w-full py-3 bg-amber-600/10 hover:bg-amber-600 text-amber-500 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-amber-500/20 flex items-center justify-center gap-2">
                                     <i data-lucide="shopping-cart" class="w-4 h-4"></i> Request Material
                                 </button>
                                 @else
-                                <div class="mt-6 p-3 bg-emerald-500/5 rounded-xl border border-emerald-500/10 text-center">
-                                    <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Material has been verified</p>
+                                <div class="mt-6 p-3 bg-indigo-500/5 rounded-xl border border-indigo-500/10 text-center">
+                                    <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                                        @if($pendingMutation)
+                                            Permintaan sedang diproses: {{ $pendingMutation->status }}
+                                        @else
+                                            Bahan baku telah terealisasi sebagian / penuh
+                                        @endif
+                                    </p>
                                 </div>
                                 @endif
                             </div>

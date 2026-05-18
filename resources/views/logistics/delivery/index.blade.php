@@ -44,12 +44,17 @@
                 </div>
 
                 <div class="pt-4 border-t border-white/5">
-                    <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Included Packing Lists</div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Included Packing Lists & Customers</div>
+                    <div class="space-y-1.5">
                         @foreach($b->packingLists as $pl)
-                        <span class="px-2 py-1 bg-white/5 text-slate-400 text-[9px] font-bold rounded-md">
-                            {{ $pl->packing_no }}
-                        </span>
+                        <div class="flex items-center justify-between text-[10px]">
+                            <span class="px-2 py-0.5 bg-white/5 text-slate-400 font-bold rounded">
+                                {{ $pl->packing_no }}
+                            </span>
+                            <span class="text-emerald-400 font-medium">
+                                {{ $pl->customer->name ?? 'Manual' }}
+                            </span>
+                        </div>
                         @endforeach
                     </div>
                 </div>
@@ -81,18 +86,9 @@
             <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="space-y-2 col-span-2">
-                        <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pilih Customer (Opsional)</label>
-                        <select id="customer_selector" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all appearance-none cursor-pointer">
-                            <option value="">-- Isi Manual --</option>
-                            @foreach($customers as $c)
-                            <option value="{{ $c->name }}">{{ $c->name }} ({{ $c->address }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="space-y-2 col-span-2">
                         <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Tujuan Pengiriman (Bisa beberapa lokasi)</label>
-                        <textarea name="destination" id="destination_input" required rows="3" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none" placeholder="Contoh: 1. Toko Jaya, 2. Gudang B, dst..."></textarea>
-                        <p class="text-[9px] text-slate-500 italic mt-1">* Gunakan koma atau angka untuk memisahkan beberapa tujuan.</p>
+                        <textarea name="destination" id="destination_input" rows="3" class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-xs text-white outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none" placeholder="Contoh: 1. Toko Jaya, 2. Gudang B, dst... (Biarkan kosong untuk otomatis mengisi dari alamat customer Packing List)"></textarea>
+                        <p class="text-[9px] text-slate-500 italic mt-1">* Gunakan enter untuk memisahkan beberapa tujuan jika diisi manual.</p>
                     </div>
                     <div class="space-y-2">
                         <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Nama Supir</label>
@@ -112,7 +108,8 @@
                             <input type="checkbox" name="packing_list_ids[]" value="{{ $apl->id }}" class="w-5 h-5 rounded-lg bg-slate-900 border-white/5 text-indigo-600 focus:ring-indigo-500/20">
                             <div>
                                 <div class="text-xs font-black text-white">{{ $apl->packing_no }}</div>
-                                <div class="text-[10px] text-slate-500 mt-1">{{ $apl->details->count() }} Items | {{ $apl->created_at->format('d M Y') }}</div>
+                                <div class="text-[10px] text-emerald-400 font-bold mt-0.5">Customer: {{ $apl->customer->name ?? 'Manual' }}</div>
+                                <div class="text-[9px] text-slate-500 mt-1">{{ $apl->details->count() }} Items | {{ $apl->created_at->format('d M Y') }}</div>
                             </div>
                         </label>
                         @empty
@@ -135,15 +132,5 @@
         const modal = document.getElementById(id);
         modal.classList.toggle('hidden');
     }
-
-    // Customer Selection Logic
-    document.getElementById('customer_selector').addEventListener('change', function() {
-        const destinationInput = document.getElementById('destination_input');
-        if (this.value) {
-            const currentVal = destinationInput.value.trim();
-            const separator = currentVal ? "\n" : "";
-            destinationInput.value = currentVal + separator + this.value;
-        }
-    });
 </script>
 @endsection

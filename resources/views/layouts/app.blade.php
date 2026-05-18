@@ -264,6 +264,9 @@
             <a href="{{ route('mutations.index') }}" class="sidebar-item {{ Request::is('transactions/mutations/index*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
                 <i data-lucide="truck" class="w-6 h-6"></i> Mutasi Gudang
             </a>
+            <a href="{{ route('mutations.rekap.index') }}" class="sidebar-item {{ Request::is('transactions/mutations/rekap*') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">
+                <i data-lucide="bar-chart-3" class="w-6 h-6"></i> Rekap PM & Realisasi
+            </a>
             @endif
             @if(Auth::user()->hasPermission('stock_opname_view'))
             <a href="{{ route('opname.index') }}" class="sidebar-item {{ Request::is('transactions/stock-opname') ? 'active' : '' }} flex items-center gap-3 p-4 rounded-xl">

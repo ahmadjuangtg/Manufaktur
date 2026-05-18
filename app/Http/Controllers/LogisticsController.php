@@ -15,17 +15,19 @@ class LogisticsController extends Controller
     // --- Packing List ---
     public function indexPacking()
     {
-        $data = PackingList::with(['details.item', 'user', 'deliveryBatch'])->latest()->get();
+        $data = PackingList::with(['details.item', 'customer', 'user', 'deliveryBatch'])->latest()->get();
         $items = Item::with('unit')
             ->whereHas('stocks', function ($query) {
                 $query->where('current_stock', '>', 0);
             })->get();
-        return view('logistics.packing.index', compact('data', 'items'));
+        $customers = \App\Models\Customer::all();
+        return view('logistics.packing.index', compact('data', 'items', 'customers'));
     }
 
     public function storePacking(Request $request)
     {
         $request->validate([
+            'customer_id' => 'nullable|exists:customers,id',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required',
             'items.*.quantity' => 'required|numeric|min:0.01',
@@ -34,6 +36,7 @@ class LogisticsController extends Controller
         DB::transaction(function () use ($request) {
             $packing = PackingList::create([
                 'packing_no' => 'PKG-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3))),
+                'customer_id' => $request->customer_id,
                 'status' => 'DRAFT',
                 'note' => $request->note,
                 'user_id' => Auth::id(),
@@ -63,8 +66,8 @@ class LogisticsController extends Controller
     // --- Delivery Batch ---
     public function indexDelivery()
     {
-        $data = DeliveryBatch::with(['packingLists', 'user'])->latest()->get();
-        $availablePackingLists = PackingList::whereNull('delivery_batch_id')->where('status', 'READY')->get();
+        $data = DeliveryBatch::with(['packingLists.customer', 'user'])->latest()->get();
+        $availablePackingLists = PackingList::with('customer')->whereNull('delivery_batch_id')->where('status', 'READY')->get();
         $customers = \App\Models\Customer::all();
         return view('logistics.delivery.index', compact('data', 'availablePackingLists', 'customers'));
     }
@@ -72,14 +75,29 @@ class LogisticsController extends Controller
     public function storeDelivery(Request $request)
     {
         $request->validate([
-            'destination' => 'required',
+            'destination' => 'nullable',
             'packing_list_ids' => 'required|array|min:1',
         ]);
 
         DB::transaction(function () use ($request) {
+            $pls = PackingList::with('customer')->whereIn('id', $request->packing_list_ids)->get();
+            
+            $dest = $request->destination;
+            if (empty($dest)) {
+                $destParts = [];
+                $index = 1;
+                foreach ($pls as $pl) {
+                    if ($pl->customer) {
+                        $destParts[] = "{$index}. {$pl->customer->name} ({$pl->customer->address})";
+                        $index++;
+                    }
+                }
+                $dest = implode("\n", $destParts);
+            }
+
             $batch = DeliveryBatch::create([
                 'batch_no' => 'DEL-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3))),
-                'destination' => $request->destination,
+                'destination' => $dest ?: 'Multi-Customer Delivery',
                 'driver_name' => $request->driver_name,
                 'vehicle_no' => $request->vehicle_no,
                 'status' => 'PENDING',
@@ -95,7 +113,7 @@ class LogisticsController extends Controller
 
     public function indexTracking()
     {
-        $data = DeliveryBatch::with(['packingLists', 'user'])
+        $data = DeliveryBatch::with(['packingLists.customer', 'packingLists.details.item', 'user'])
             ->whereIn('status', ['PENDING', 'ON_DELIVERY'])
             ->latest()
             ->get();
@@ -141,5 +159,11 @@ class LogisticsController extends Controller
         $batch->update($updateData);
 
         return redirect()->back()->with('success', 'Status pengiriman diperbarui ke ' . $status . ' dan stok telah diperbarui.');
+    }
+
+    public function printSuratJalan($id)
+    {
+        $packing = PackingList::with(['details.item.unit', 'customer', 'deliveryBatch'])->findOrFail($id);
+        return view('logistics.delivery.print_surat_jalan', compact('packing'));
     }
 }

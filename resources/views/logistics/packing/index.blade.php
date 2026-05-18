@@ -25,6 +25,10 @@
                     <div>
                         <div class="text-xs font-black text-slate-500 uppercase tracking-widest mb-1">{{ $p->packing_no }}</div>
                         <h4 class="text-white font-bold">{{ $p->details->count() }} Items Packed</h4>
+                        <div class="text-[10px] text-emerald-400 font-bold mt-0.5">
+                            <i data-lucide="user" class="w-3.5 h-3.5 inline mr-1 -mt-0.5"></i>
+                            Customer: {{ $p->customer->name ?? 'Manual / Tanpa Customer' }}
+                        </div>
                         <div class="text-[10px] text-slate-500 mt-1">Dibuat oleh: {{ $p->user->name }} | {{ $p->created_at->format('d M Y H:i') }}</div>
                     </div>
                 </div>
@@ -95,6 +99,17 @@
             </div>
 
             <div class="space-y-6">
+                <!-- Customer Selection -->
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Customer / Tujuan Pengiriman</label>
+                    <select name="customer_id" required class="w-full bg-slate-900 border-white/5 rounded-2xl px-5 py-4 text-xs text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all appearance-none cursor-pointer">
+                        <option value="">-- Pilih Customer --</option>
+                        @foreach($customers as $c)
+                        <option value="{{ $c->id }}">{{ $c->name }} ({{ $c->address }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Items to Pack</label>

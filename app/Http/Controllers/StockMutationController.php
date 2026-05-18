@@ -198,4 +198,61 @@ class StockMutationController extends Controller
             ->findOrFail($id);
         return view('transactions.mutations.print', compact('mutation'));
     }
+
+    // 4. Laporan Rekap PM & Realisasi
+    public function indexRekap(Request $request)
+    {
+        $from_warehouse_id = $request->from_warehouse_id;
+        $to_warehouse_id = $request->to_warehouse_id;
+        $status = $request->status;
+        $search = $request->search;
+
+        $query = StockMutation::with([
+            'fromWarehouse:id,name',
+            'toWarehouse:id,name',
+            'user:id,name',
+            'workOrder:id,wo_number',
+            'details.item.unit',
+            'deliveries.sender:id,name'
+        ]);
+
+        if ($from_warehouse_id) {
+            $query->where('from_warehouse_id', $from_warehouse_id);
+        }
+        if ($to_warehouse_id) {
+            $query->where('to_warehouse_id', $to_warehouse_id);
+        }
+        if ($status) {
+            $query->where('status', $status);
+        }
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('reference_no', 'like', "%{$search}%")
+                  ->orWhereHas('workOrder', function($wq) use ($search) {
+                      $wq->where('wo_number', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $data = $query->latest()->paginate(15)->withQueryString();
+        $warehouses = Warehouse::all();
+        
+        return view('transactions.mutations.rekap', compact('data', 'warehouses'));
+    }
+
+    public function deliverPartial(Request $request, $id)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.quantity' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $this->inventoryService->deliverPartialMutation($id, $request->items);
+            return redirect()->back()->with('success', 'Pengiriman cicilan berhasil dicatat.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
 }

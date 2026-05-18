@@ -131,6 +131,112 @@ class InventoryService
     }
 
     /**
+     * Process Partial Stock Mutation Shipment (Fulfillment)
+     */
+    public function deliverPartialMutation(int $id, array $items)
+    {
+        return DB::transaction(function () use ($id, $items) {
+            $mutation = StockMutation::with(['details', 'deliveries', 'toWarehouse', 'fromWarehouse'])->findOrFail($id);
+
+            if (!in_array($mutation->status, ['APPROVED', 'SENDING'])) {
+                throw new \Exception("Hanya mutasi berstatus APPROVED atau SENDING yang dapat diproses kirim.");
+            }
+
+            // Loop items sent in this batch
+            foreach ($items as $sentItem) {
+                $itemId = $sentItem['item_id'];
+                $quantity = floatval($sentItem['quantity']);
+
+                if ($quantity <= 0) continue;
+
+                // Find associated detail line
+                $detail = $mutation->details->where('item_id', $itemId)->first();
+                if (!$detail) {
+                    throw new \Exception("Item ID {$itemId} tidak ada dalam dokumen permintaan mutasi.");
+                }
+
+                // Check sisa kekurangan yang bisa dikirim
+                $alreadySent = $mutation->deliveries->where('item_id', $itemId)->sum('quantity');
+                $maxPossible = $detail->quantity - $alreadySent;
+
+                if ($quantity > $maxPossible) {
+                    throw new \Exception("Jumlah kirim ({$quantity}) melebihi sisa kekurangan yang ada ({$maxPossible}).");
+                }
+
+                // 1. Pelepasan Booking Mutasi (LOCK_OUT) dari gudang asal senilai Qty kiriman
+                StockTransaction::create([
+                    'item_id' => $itemId,
+                    'warehouse_id' => $mutation->from_warehouse_id,
+                    'type' => 'LOCK_OUT',
+                    'quantity' => $quantity,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                    'note' => 'Pelepasan Booking Mutasi Cicilan ke ' . $mutation->toWarehouse->name,
+                    'user_id' => Auth::id(),
+                ]);
+
+                // 2. Mengurangi stok fisik (OUT) dari gudang asal senilai Qty kiriman
+                StockTransaction::create([
+                    'item_id' => $itemId,
+                    'warehouse_id' => $mutation->from_warehouse_id,
+                    'type' => 'OUT',
+                    'quantity' => $quantity,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                    'note' => 'Mutasi Cicilan ke ' . $mutation->toWarehouse->name,
+                    'user_id' => Auth::id(),
+                ]);
+
+                // 3. Menambahkan stok fisik (IN) di gudang tujuan senilai Qty kiriman
+                StockTransaction::create([
+                    'item_id' => $itemId,
+                    'warehouse_id' => $mutation->to_warehouse_id,
+                    'type' => 'IN',
+                    'quantity' => $quantity,
+                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                    'note' => 'Mutasi Cicilan dari ' . $mutation->fromWarehouse->name,
+                    'user_id' => Auth::id(),
+                ]);
+
+                // 4. Catat ke tabel pengiriman
+                \App\Models\StockMutationDelivery::create([
+                    'stock_mutation_id' => $mutation->id,
+                    'item_id' => $itemId,
+                    'quantity' => $quantity,
+                    'delivered_by' => Auth::id(),
+                    'delivered_at' => now(),
+                ]);
+            }
+
+            // Refresh deliveries to check if all are fully satisfied
+            $mutation->load('deliveries');
+
+            $allCompleted = true;
+            foreach ($mutation->details as $detail) {
+                $totalDelivered = $mutation->deliveries->where('item_id', $detail->item_id)->sum('quantity');
+                if ($totalDelivered < $detail->quantity) {
+                    $allCompleted = false;
+                    break;
+                }
+            }
+
+            if ($allCompleted) {
+                $mutation->update([
+                    'status' => 'COMPLETED',
+                    'received_by' => Auth::id(),
+                    'received_at' => now()
+                ]);
+            } else {
+                $mutation->update([
+                    'status' => 'SENDING',
+                    'sent_by' => Auth::id(),
+                    'sent_at' => now()
+                ]);
+            }
+
+            return $mutation;
+        });
+    }
+
+    /**
      * Get Current Stock for an Item in a Warehouse
      */
     public function getStockBalance(int $itemId, int $warehouseId)

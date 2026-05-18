@@ -54,13 +54,26 @@
                 </div>
             </div>
 
-            <div class="mt-8 pt-8 border-t border-white/5 flex flex-wrap gap-4">
-                @foreach($b->packingLists as $pl)
-                <div class="px-4 py-2 bg-white/[0.03] rounded-xl border border-white/5 flex items-center gap-3">
-                    <i data-lucide="box" class="w-3 h-3 text-slate-500"></i>
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ $pl->packing_no }}</span>
+            <div class="mt-8 pt-8 border-t border-white/5 space-y-3">
+                <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Daftar Surat Jalan per Customer:</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    @foreach($b->packingLists as $pl)
+                    <div class="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex justify-between items-center gap-4">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 bg-white/5 text-slate-400 text-[9px] font-bold rounded">
+                                    {{ $pl->packing_no }}
+                                </span>
+                                <span class="text-xs text-white font-bold">{{ $pl->customer->name ?? 'Manual' }}</span>
+                            </div>
+                            <div class="text-[9px] text-slate-500 italic truncate w-72">{{ $pl->customer->address ?? 'Tanpa Alamat' }}</div>
+                        </div>
+                        <a href="{{ route('logistics.delivery.print', $pl->id) }}" target="_blank" class="bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-400 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-indigo-500/20 flex items-center gap-2">
+                            <i data-lucide="printer" class="w-3.5 h-3.5"></i> Cetak Surat Jalan
+                        </a>
+                    </div>
+                    @endforeach
                 </div>
-                @endforeach
             </div>
         </div>
         @empty

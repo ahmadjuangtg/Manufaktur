@@ -206,6 +206,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/receive/{id}', [\App\Http\Controllers\StockMutationController::class, 'receive'])->name('mutations.receive');
             Route::get('/get-details/{id}', [\App\Http\Controllers\StockMutationController::class, 'show'])->name('mutations.get_details');
             Route::get('/print/{id}', [\App\Http\Controllers\StockMutationController::class, 'print'])->name('mutations.print');
+
+            // Rekap PM & Realisasi Cicilan
+            Route::get('/rekap', [\App\Http\Controllers\StockMutationController::class, 'indexRekap'])->name('mutations.rekap.index');
+            Route::post('/deliver-partial/{id}', [\App\Http\Controllers\StockMutationController::class, 'deliverPartial'])->name('mutations.deliver_partial');
         });
     });
 
@@ -217,6 +221,7 @@ Route::middleware(['auth'])->group(function () {
         
         Route::get('/delivery', [\App\Http\Controllers\LogisticsController::class, 'indexDelivery'])->name('logistics.delivery.index')->middleware('permission:logistics_delivery_view');
         Route::post('/delivery', [\App\Http\Controllers\LogisticsController::class, 'storeDelivery'])->name('logistics.delivery.store')->middleware('permission:logistics_delivery_create');
+        Route::get('/delivery/print/{id}', [\App\Http\Controllers\LogisticsController::class, 'printSuratJalan'])->name('logistics.delivery.print')->middleware('permission:logistics_delivery_view');
 
         Route::get('/tracking', [\App\Http\Controllers\LogisticsController::class, 'indexTracking'])->name('logistics.tracking.index')->middleware('permission:logistics_tracking_view');
         Route::post('/tracking/update/{id}', [\App\Http\Controllers\LogisticsController::class, 'updateStatusDelivery'])->name('logistics.tracking.update')->middleware('permission:logistics_tracking_create');

@@ -57,4 +57,9 @@ class StockMutation extends Model
     {
         return $this->hasMany(StockMutationDetail::class);
     }
+
+    public function deliveries()
+    {
+        return $this->hasMany(StockMutationDelivery::class);
+    }
 }

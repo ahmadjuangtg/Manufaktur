@@ -22,7 +22,7 @@ class ShopFloorController extends Controller
         $stages = WorkOrderStage::with([
                 'workOrder' => function($q) {
                     $q->select('id', 'wo_number', 'customer_id', 'status')
-                      ->with(['customer:id,name', 'mutations']);
+                      ->with(['customer:id,name', 'mutations.deliveries']);
                 },
                 'machine:id,name',
                 'machine.steps:id,machine_id,name',
