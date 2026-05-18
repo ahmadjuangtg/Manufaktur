@@ -125,34 +125,42 @@ class ShopFloorController extends Controller
     {
         $stage = WorkOrderStage::findOrFail($id);
         
-        DB::transaction(function () use ($stage) {
-            $stage->update([
-                'status' => 'completed',
-                'end_time' => now()
-            ]);
+        try {
+            DB::transaction(function () use ($stage) {
+                // MANDATORY CHECK: Must have at least one PHP or NPB created for this WO 
+                // BEFORE we allow finishing the stage (as requested by user)
+                $hasHandover = \App\Models\ProductionTransfer::where('work_order_id', $stage->work_order_id)->exists();
+                if (!$hasHandover) {
+                    throw new \Exception('Wajib mengisi form Serah Terima (PHP/NPB) terlebih dahulu sebelum menyelesaikan tahapan produksi.');
+                }
 
-            // End machine log
-            if ($stage->machine_id) {
-                MachineStatusLog::where('machine_id', $stage->machine_id)
-                    ->whereNull('end_at')
-                    ->update(['end_at' => now()]);
-            }
+                $stage->update([
+                    'status' => 'completed',
+                    'end_time' => now()
+                ]);
 
-            // Check if all stages in this WO are completed
-            $totalStages = WorkOrderStage::where('work_order_id', $stage->work_order_id)->count();
-            $completedStages = WorkOrderStage::where('work_order_id', $stage->work_order_id)
-                ->where('status', 'completed')
-                ->count();
-                
-            if ($totalStages === $completedStages) {
-                // If this was the last stage, the WO is not necessarily 'completed' 
-                // until PHP is verified, but we can set it to 'finishing' or similar
-                // For now, keep it 'in_progress' or set to 'completed' as per current logic
-                $stage->workOrder->update(['status' => 'completed']);
-            }
-        });
+                // End machine log
+                if ($stage->machine_id) {
+                    MachineStatusLog::where('machine_id', $stage->machine_id)
+                        ->whereNull('end_at')
+                        ->update(['end_at' => now()]);
+                }
 
-        return redirect()->back()->with('success', 'Tahapan produksi selesai.');
+                // Check if all stages in this WO are completed
+                $totalStages = WorkOrderStage::where('work_order_id', $stage->work_order_id)->count();
+                $completedStages = WorkOrderStage::where('work_order_id', $stage->work_order_id)
+                    ->where('status', 'completed')
+                    ->count();
+                    
+                if ($totalStages === $completedStages) {
+                    $stage->workOrder->update(['status' => 'completed']);
+                }
+            });
+
+            return redirect()->back()->with('success', 'Tahapan produksi selesai.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
     public function storeMaterialRequest(Request $request, $stageId)
     {
@@ -184,19 +192,38 @@ class ShopFloorController extends Controller
 
     public function getStageItems($id)
     {
-        $stage = WorkOrderStage::with('items.item.unit')->findOrFail($id);
-        $items = $stage->items()->where('type', 'input')->get()->map(function($i) {
+        $stage = WorkOrderStage::with(['items.item.unit', 'workOrder.stages.machine.warehouse'])->findOrFail($id);
+        
+        $items = $stage->items()->where('type', 'input')->get()->map(function($i) use ($stage) {
+            // Logic: find if this item was an output of any PREVIOUS stage
+            $sourceWarehouseId = null;
+            $previousStages = $stage->workOrder->stages->where('sequence', '<', $stage->sequence)->sortByDesc('sequence');
+            
+            foreach ($previousStages as $prev) {
+                $hasOutput = $prev->items->where('item_id', $i->item_id)->where('type', 'output')->first();
+                if ($hasOutput && $prev->machine && $prev->machine->warehouse_id) {
+                    $sourceWarehouseId = $prev->machine->warehouse_id;
+                    break;
+                }
+            }
+
             return [
                 'id' => $i->item_id,
                 'name' => $i->item->name,
                 'code' => $i->item->code,
                 'quantity' => $i->quantity_total > 0 ? $i->quantity_total : ($i->quantity ?? 0),
-                'unit' => $i->item->unit->name ?? 'UNIT'
+                'unit' => $i->item->unit->name ?? 'UNIT',
+                'suggested_source_warehouse_id' => $sourceWarehouseId
             ];
         });
+
+        // Current machine's warehouse for destination
+        $targetWarehouseId = $stage->machine->warehouse_id ?? null;
+
         return response()->json([
             'wo_number' => $stage->workOrder->wo_number,
-            'items' => $items
+            'items' => $items,
+            'target_warehouse_id' => $targetWarehouseId
         ]);
     }
 }

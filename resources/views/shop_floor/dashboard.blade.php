@@ -384,11 +384,21 @@
             
             // Set WO Number automatically
             document.getElementById('modal_wo_number').value = data.wo_number;
+            
+            // Auto-set warehouses if suggested
+            if (data.target_warehouse_id) {
+                document.getElementById('modal_to_warehouse_id').value = data.target_warehouse_id;
+            }
 
             tbody.innerHTML = '';
             requestItemIndex = 0;
             
             if (data.items && data.items.length > 0) {
+                // If the first item has a suggested source, set the "From Warehouse"
+                if (data.items[0].suggested_source_warehouse_id) {
+                    document.getElementById('modal_from_warehouse_id').value = data.items[0].suggested_source_warehouse_id;
+                }
+
                 data.items.forEach(item => {
                     addRequestItemRow(item);
                 });

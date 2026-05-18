@@ -107,4 +107,10 @@ class ProductionController extends Controller
         $template = ProductionTemplate::with(['stages.machine', 'stages.items.item', 'products.item'])->findOrFail($id);
         return response()->json($template);
     }
+
+    public function getStages($id)
+    {
+        $wo = WorkOrder::with('stages')->findOrFail($id);
+        return response()->json($wo->stages);
+    }
 }

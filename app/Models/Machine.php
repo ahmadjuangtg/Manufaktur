@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Machine extends Model
 {
-    protected $fillable = ['code', 'name', 'machine_category_id', 'supplier_id', 'capacity', 'capacity_unit', 'output_unit', 'outlet', 'is_active'];
+    protected $fillable = ['code', 'name', 'machine_category_id', 'supplier_id', 'warehouse_id', 'capacity', 'capacity_unit', 'output_unit', 'outlet', 'is_active'];
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
 
     public function category()
     {

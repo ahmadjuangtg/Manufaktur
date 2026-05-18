@@ -568,9 +568,23 @@
             
             function renderOptions(filter = '') {
                 optionsList.innerHTML = '';
+                
+                // Get other select value for mutual exclusion
+                let otherValue = null;
+                if (select.id === 'main_item_select') {
+                    const sub = document.getElementById('sub_item_select');
+                    if (sub) otherValue = sub.value;
+                } else if (select.id === 'sub_item_select') {
+                    const main = document.getElementById('main_item_select');
+                    if (main) otherValue = main.value;
+                }
+
                 Array.from(select.options).forEach(opt => {
                     if (filter && !opt.text.toLowerCase().includes(filter.toLowerCase()) && opt.value !== "") return;
                     
+                    // Filter out the item that is already selected in the opposite dropdown
+                    if (otherValue && opt.value === otherValue && opt.value !== "") return;
+
                     const customOpt = document.createElement('div');
                     customOpt.className = 'custom-option' + (select.value === opt.value ? ' selected' : '');
                     customOpt.innerText = opt.text;
@@ -584,6 +598,9 @@
                     optionsList.appendChild(customOpt);
                 });
             }
+
+            // Expose refresh method
+            select.refreshOptions = renderOptions;
 
             trigger.onclick = (e) => {
                 e.stopPropagation();
@@ -625,6 +642,14 @@
         const selectedOption = select.options[select.selectedIndex];
         const unit = selectedOption ? selectedOption.getAttribute('data-unit') : '-';
         label.innerText = unit || '-';
+
+        // Refresh the OTHER select dropdown to exclude current selection
+        const otherType = type === 'main' ? 'sub' : 'main';
+        const otherSelect = document.getElementById(otherType + '_item_select');
+        if (otherSelect && otherSelect.refreshOptions) {
+            otherSelect.refreshOptions();
+        }
+
         calculateRatio();
     }
 

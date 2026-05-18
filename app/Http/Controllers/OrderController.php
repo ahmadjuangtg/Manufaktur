@@ -220,8 +220,8 @@ class OrderController extends Controller {
     // 4. RECEIVE MATERIAL
     public function indexReceive() {
         return view('orders.receives.index', [
-            'data' => PurchaseOrder::with(['supplier', 'details.item', 'request'])->whereIn('status', ['OPEN', 'PARTIAL'])->get(),
-            'items' => Item::all(),
+            'data' => PurchaseOrder::with(['supplier', 'details.item.unit', 'request'])->whereIn('status', ['OPEN', 'PARTIAL'])->get(),
+            'items' => Item::with('unit')->get(),
             'warehouses' => (Auth::user()->role->name ?? '') === 'Super Administrator' ? Warehouse::all() : Auth::user()->warehouses
         ]);
     }

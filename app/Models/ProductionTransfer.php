@@ -7,10 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class ProductionTransfer extends Model
 {
     protected $fillable = [
-        'reference_no', 'work_order_id', 'type', 'quantity', 
+        'reference_no', 'work_order_id', 'work_order_stage_id', 'type', 'quantity', 
         'from_warehouse_id', 'to_warehouse_id', 'status', 
         'user_id', 'verified_by', 'verified_at'
     ];
+
+    public function stage()
+    {
+        return $this->belongsTo(WorkOrderStage::class, 'work_order_stage_id');
+    }
 
     protected $casts = [
         'verified_at' => 'datetime',

@@ -41,6 +41,7 @@ class MachineController extends Controller
             'capacity_unit' => 'required',
             'output_unit' => 'required',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'steps' => 'nullable|array',
         ]);
 
@@ -74,6 +75,7 @@ class MachineController extends Controller
             'capacity_unit' => 'required',
             'output_unit' => 'required',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
             'steps' => 'nullable|array',
         ]);
 

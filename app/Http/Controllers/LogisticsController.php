@@ -101,15 +101,42 @@ class LogisticsController extends Controller
 
     public function updateStatusDelivery(Request $request, $id)
     {
-        $batch = DeliveryBatch::findOrFail($id);
+        $batch = DeliveryBatch::with('packingLists.details.item')->findOrFail($id);
+        $oldStatus = $batch->status;
         $status = $request->status;
 
+        if ($oldStatus === $status) return redirect()->back();
+
         $updateData = ['status' => $status];
-        if ($status == 'ON_DELIVERY') $updateData['departure_at'] = now();
+        if ($status == 'ON_DELIVERY') {
+            $updateData['departure_at'] = now();
+
+            // REDUCE STOCK FROM FG WAREHOUSE
+            DB::transaction(function() use ($batch) {
+                foreach ($batch->packingLists as $pl) {
+                    foreach ($pl->details as $detail) {
+                        // Find Finished Goods Warehouse
+                        $fgWh = \App\Models\Warehouse::where('name', 'like', '%Barang Jadi%')->first();
+                        $warehouseId = $fgWh ? $fgWh->id : 1; // Fallback to ID 1
+
+                        \App\Models\StockTransaction::create([
+                            'item_id' => $detail->item_id,
+                            'warehouse_id' => $warehouseId,
+                            'type' => 'OUT',
+                            'quantity' => $detail->quantity,
+                            'reference_no' => $batch->batch_no,
+                            'user_id' => Auth::id(),
+                            'note' => 'Pengiriman Barang: ' . $batch->batch_no . ' (Packing: ' . $pl->packing_no . ')'
+                        ]);
+                    }
+                }
+            });
+        }
+        
         if ($status == 'COMPLETED') $updateData['arrival_at'] = now();
 
         $batch->update($updateData);
 
-        return redirect()->back()->with('success', 'Status pengiriman diperbarui ke ' . $status);
+        return redirect()->back()->with('success', 'Status pengiriman diperbarui ke ' . $status . ' dan stok telah diperbarui.');
     }
 }

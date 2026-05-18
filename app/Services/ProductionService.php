@@ -142,9 +142,16 @@ class ProductionService
             if ($status === 'ready_to_production' && in_array($oldStatus, ['draft', 'pending'])) {
                 foreach ($wo->stages as $stage) {
                     foreach ($stage->items as $item) {
-                        if ($item->type === 'MATERIAL') {
+                        if ($item->type === 'MATERIAL' || $item->type === 'input') {
+                            // Find warehouse that actually has this item
+                            $stock = \App\Models\InventoryStock::where('item_id', $item->item_id)
+                                ->where('current_stock', '>', 0)
+                                ->first();
+                            
+                            $targetWarehouseId = $stock ? $stock->warehouse_id : $mainWarehouseId;
+
                             \App\Models\StockTransaction::create([
-                                'warehouse_id' => $mainWarehouseId,
+                                'warehouse_id' => $targetWarehouseId,
                                 'item_id' => $item->item_id,
                                 'type' => 'LOCK_IN',
                                 'quantity' => $item->quantity_total,
@@ -155,13 +162,28 @@ class ProductionService
                         }
                     }
                 }
+
+                // AUTO-INITIALIZE SCHEDULE
+                if (!$wo->scheduled_start) {
+                    $duration = $wo->duration > 0 ? $wo->duration : 1;
+                    $start = now();
+                    $end = (clone $start)->addMinutes($duration * 60);
+                    
+                    $wo->update([
+                        'scheduled_start' => $start->format('Y-m-d H:i:s'),
+                        'scheduled_end' => $end->format('Y-m-d H:i:s'),
+                    ]);
+
+                    // Trigger resequence to snap it to the end of the line queue
+                    app(\App\Services\SchedulingService::class)->resequenceLine($wo->production_line);
+                }
             }
 
             // READY -> DRAFT (Cancel Booking): UNLOCK MATERIALS
             if ($status === 'draft' && $oldStatus === 'ready_to_production') {
                 foreach ($wo->stages as $stage) {
                     foreach ($stage->items as $item) {
-                        if ($item->type === 'MATERIAL') {
+                        if ($item->type === 'MATERIAL' || $item->type === 'input') {
                             \App\Models\StockTransaction::create([
                                 'warehouse_id' => $mainWarehouseId,
                                 'item_id' => $item->item_id,
@@ -196,7 +218,7 @@ class ProductionService
                 // 1. Consume Materials (Release Lock + Physical OUT)
                 foreach ($wo->stages as $stage) {
                     foreach ($stage->items as $item) {
-                        if ($item->type === 'MATERIAL') {
+                        if ($item->type === 'MATERIAL' || $item->type === 'input') {
                             // Find lock
                             $lock = \App\Models\StockTransaction::where('reference_no', $wo->wo_number)
                                 ->where('item_id', $item->item_id)
@@ -248,6 +270,17 @@ class ProductionService
                             'reference_no' => $wo->wo_number,
                             'user_id' => Auth::id(),
                             'note' => 'Realisasi Hasil WO: ' . $wo->wo_number
+                        ]);
+
+                        // ADD Physical IN to Production Warehouse
+                        \App\Models\StockTransaction::create([
+                            'warehouse_id' => $shadow->warehouse_id,
+                            'item_id' => $prod->item_id,
+                            'type' => 'IN',
+                            'quantity' => $prod->quantity,
+                            'reference_no' => $wo->wo_number,
+                            'user_id' => Auth::id(),
+                            'note' => 'Penerimaan Hasil Produksi Internal WO: ' . $wo->wo_number
                         ]);
                     }
                 }

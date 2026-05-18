@@ -30,7 +30,7 @@
                             @foreach($item->details as $d)
                             <div class="flex items-center justify-between gap-4">
                                 <span class="text-xs text-slate-300">{{ $d->item->name }}</span>
-                                <span class="text-[10px] font-bold text-indigo-400">{{ number_format($d->received_quantity) }} / {{ number_format($d->quantity) }}</span>
+                                <span class="text-[10px] font-bold text-indigo-400">{{ number_format($d->received_quantity) }} / {{ number_format($d->quantity) }} {{ $d->item->unit->name ?? '' }}</span>
                             </div>
                             <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
                                 <div class="bg-indigo-500 h-full" style="width: {{ ($d->received_quantity / $d->quantity) * 100 }}%"></div>
@@ -39,7 +39,7 @@
                         </div>
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <button onclick="openReceiveModal({{ $item->id }}, '{{ $item->po_no }}', {{ json_encode($item->details->map(fn($d) => ['id' => $d->item_id, 'name' => $d->item->name, 'pending' => $d->quantity - $d->received_quantity])) }})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all">Input Terima</button>
+                        <button onclick="openReceiveModal({{ $item->id }}, '{{ $item->po_no }}', {{ json_encode($item->details->map(fn($d) => ['id' => $d->item_id, 'name' => $d->item->name, 'unit' => $d->item->unit->name ?? '', 'pending' => $d->quantity - $d->received_quantity])) }})" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all">Input Terima</button>
                     </td>
                 </tr>
                 @empty
@@ -106,7 +106,8 @@
             const div = document.createElement('div');
             div.className = 'grid grid-cols-12 gap-6 items-center';
             div.innerHTML = `
-                <div class="col-span-8 text-sm text-white font-bold">${item.name}</div>
+                <div class="col-span-6 text-sm text-white font-bold">${item.name}</div>
+                <div class="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-widest">${item.unit}</div>
                 <div class="col-span-4">
                     <input type="number" name="items[${item.id}]" max="${item.pending}" min="0" placeholder="Maks ${item.pending}" class="w-full bg-[#0f172a] border border-white/10 rounded-lg py-2.5 px-4 focus:border-emerald-500 outline-none text-white text-xs font-bold">
                 </div>
@@ -130,16 +131,17 @@
         
         let options = '<option value="">-- Pilih Item --</option>';
         masterItems.forEach(it => {
-            options += `<option value="${it.id}">${it.name}</option>`;
+            options += `<option value="${it.id}" data-unit="${it.unit ? it.unit.name : ''}">${it.name}</option>`;
         });
 
         div.innerHTML = `
-            <div class="col-span-7">
-                <select name="extra_items[${extraIndex}][id]" class="w-full bg-[#0f172a] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs">
+            <div class="col-span-6">
+                <select name="extra_items[${extraIndex}][id]" onchange="updateExtraUnit(this)" class="w-full bg-[#0f172a] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs">
                     ${options}
                 </select>
             </div>
-            <div class="col-span-4">
+            <div class="col-span-2 text-[10px] font-black text-slate-500 uppercase tracking-widest unit-label"></div>
+            <div class="col-span-3">
                 <input type="number" name="extra_items[${extraIndex}][quantity]" placeholder="Qty" class="w-full bg-[#0f172a] border border-white/10 rounded-lg py-2 px-3 focus:border-indigo-500 outline-none text-white text-xs">
             </div>
             <div class="col-span-1">
@@ -149,6 +151,12 @@
         list.appendChild(div);
         extraIndex++;
         lucide.createIcons();
+    }
+
+    function updateExtraUnit(select) {
+        const unit = select.options[select.selectedIndex].getAttribute('data-unit');
+        const row = select.closest('.extra-row');
+        row.querySelector('.unit-label').innerText = unit || '';
     }
 </script>
 @endsection

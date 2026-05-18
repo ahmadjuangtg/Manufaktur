@@ -7,9 +7,15 @@ use App\Models\WorkOrderStage;
 use App\Models\Machine;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
-
 class SchedulingService
 {
+    protected $productionService;
+
+    public function __construct(\App\Services\ProductionService $productionService)
+    {
+        $this->productionService = $productionService;
+    }
+
     /**
      * Update a Work Order schedule and resequence the line(s)
      */
@@ -30,7 +36,16 @@ class SchedulingService
 
             // Fields that are LOCKED if in_progress
             if (!$isInProgress) {
-                if (isset($data['priority_id'])) $updateData['priority_id'] = $data['priority_id'];
+                if (isset($data['priority_id'])) {
+                    $updateData['priority_id'] = $data['priority_id'];
+                    // AUTO STATUS CHANGE: From draft to ready_to_production
+                    if ($wo->status === 'draft') {
+                        // Call ProductionService to handle status change side effects (e.g. locking)
+                        $this->productionService->updateStatus($wo->id, 'ready_to_production');
+                        // Refresh WO to get updated status
+                        $wo->refresh();
+                    }
+                }
                 
                 // Update Stage Machines
                 if (isset($data['stage_machines']) && is_array($data['stage_machines'])) {

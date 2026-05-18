@@ -168,13 +168,19 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Outlet</label>
-                        <select name="outlet" id="outlet" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-3 px-4 focus:border-indigo-500 outline-none text-white">
-                            <option value="">Select outlet</option>
+                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Gudang Penyimpanan (Inventory)*</label>
+                        <select name="warehouse_id" id="warehouse_id" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-3 px-4 focus:border-indigo-500 outline-none text-white" required>
+                            <option value="">Pilih Gudang Lokasi Mesin</option>
                             @foreach($warehouses as $w)
-                            <option value="{{ $w->name }}">{{ $w->name }}</option>
+                            <option value="{{ $w->id }}">{{ $w->name }}</option>
                             @endforeach
                         </select>
+                        <p class="text-[9px] text-slate-500 mt-1 italic">*Digunakan untuk request material otomatis antar tahapan</p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-[12px] font-bold text-slate-500 uppercase mb-1">Outlet Display</label>
+                        <input type="text" name="outlet" id="outlet" placeholder="e.g. Line 1, Section A" class="w-full bg-[#1e293b] border border-white/10 rounded-lg py-2.5 px-4 focus:border-indigo-500 outline-none text-white font-medium">
                     </div>
 
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -271,6 +277,7 @@
         document.getElementById('name').value = data.name;
         document.getElementById('machine_category_id').value = data.machine_category_id;
         document.getElementById('supplier_id').value = data.supplier_id || '';
+        document.getElementById('warehouse_id').value = data.warehouse_id || '';
         document.getElementById('outlet').value = data.outlet || '';
         document.getElementById('capacity').value = data.capacity;
         document.getElementById('capacity_unit').value = data.capacity_unit;

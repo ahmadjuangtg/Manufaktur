@@ -72,9 +72,9 @@
                             </button>
                         </form>
                         @else
-                        <button class="p-2 text-slate-600 hover:text-white transition-colors">
+                        <a href="{{ route('production.reports.handover.print', $t->id) }}" target="_blank" class="p-2 text-slate-600 hover:text-white transition-colors inline-block">
                             <i data-lucide="printer" class="w-4 h-4"></i>
-                        </button>
+                        </a>
                         @endif
                     </td>
                 </tr>
@@ -100,11 +100,17 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="md:col-span-2">
                     <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Pilih Work Order*</label>
-                    <select name="work_order_id" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none" required>
-                        <option value="">-- Pilih WO Selesai --</option>
+                    <select name="work_order_id" id="modal_work_order_id" onchange="loadStages(this.value)" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none" required>
+                        <option value="">-- Pilih WO --</option>
                         @foreach($workOrders as $wo)
                         <option value="{{ $wo->id }}">{{ $wo->wo_number }} ({{ $wo->customer->name ?? 'Internal' }})</option>
                         @endforeach
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Pilih Tahapan (Opsional untuk WIP)</label>
+                    <select name="work_order_stage_id" id="modal_work_order_stage_id" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none">
+                        <option value="">-- Seluruh Work Order (Barang Jadi) --</option>
                     </select>
                 </div>
                 <div>
@@ -121,16 +127,18 @@
                 <div>
                     <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Gudang Asal*</label>
                     <select name="from_warehouse_id" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none" required>
+                        <option value="">Pilih Gudang Asal</option>
                         @foreach($warehouses as $w)
-                        <option value="{{ $w->id }}" {{ $loop->first ? 'selected' : '' }}>{{ $w->name }}</option>
+                        <option value="{{ $w->id }}">{{ $w->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div>
                     <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Gudang Tujuan*</label>
                     <select name="to_warehouse_id" class="w-full bg-slate-900 border border-white/10 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none" required>
+                        <option value="">Pilih Gudang Tujuan</option>
                         @foreach($warehouses as $w)
-                        <option value="{{ $w->id }}" {{ $loop->last ? 'selected' : '' }}>{{ $w->name }}</option>
+                        <option value="{{ $w->id }}">{{ $w->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -149,6 +157,31 @@
     }
     function closeModal() {
         document.getElementById('modal').classList.add('hidden');
+    }
+
+    async function loadStages(woId) {
+        const stageSelect = document.getElementById('modal_work_order_stage_id');
+        stageSelect.innerHTML = '<option value="">-- Loading... --</option>';
+        
+        if (!woId) {
+            stageSelect.innerHTML = '<option value="">-- Pilih WO Terlebih Dahulu --</option>';
+            return;
+        }
+
+        try {
+            // We can reuse the Shop Floor endpoint or create a new one. 
+            // For now, let's assume we can fetch it via a new simple route or just use the existing one if it fits.
+            // Actually, I'll use a simple fetch to a new endpoint I'll add.
+            const response = await fetch(`/production/work-orders/get-stages/${woId}`);
+            const stages = await response.json();
+            
+            stageSelect.innerHTML = '<option value="">-- Seluruh Work Order (Barang Jadi) --</option>';
+            stages.forEach(s => {
+                stageSelect.innerHTML += `<option value="${s.id}">Tahapan ${s.sequence}: ${s.name}</option>`;
+            });
+        } catch (e) {
+            stageSelect.innerHTML = '<option value="">-- Gagal memuat tahapan --</option>';
+        }
     }
 </script>
 @endsection

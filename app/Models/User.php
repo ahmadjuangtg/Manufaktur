@@ -38,32 +38,38 @@ class User extends Authenticatable
     public function hasPermission($permission)
     {
         if (!$this->role) return false;
-        $userPerms = $this->role->permissions ?? [];
+        
+        $userPerms = $this->role->permissions;
+        if (is_string($userPerms)) $userPerms = json_decode($userPerms, true);
+        if (!is_array($userPerms)) $userPerms = [];
+        $userPerms = array_map('trim', $userPerms);
+
+        // 1. Super Admin check
         if (in_array('all', $userPerms)) return true;
+
+        // 2. Direct match (High Priority)
         if (in_array($permission, $userPerms)) return true;
 
-        // Module-wide permission fallback: 
-        // If checking for 'order_view', allow if they have ANY 'order_***_view'
-        if (str_ends_with($permission, '_view')) {
-            $module = str_replace('_view', '', $permission);
+        // 3. Strict exclusion: Approval and Security should NEVER fallback
+        if (str_contains($permission, 'approval') || str_contains($permission, 'security')) {
+            return false;
+        }
+
+        // 4. Module-wide view fallback (e.g. master_data_view allowed if has any master_***_view)
+        if ($permission === 'master_data_view' || $permission === 'order_view' || $permission === 'production_view') {
+            $prefix = str_replace('_view', '', $permission);
             foreach ($userPerms as $p) {
-                if (str_starts_with($p, $module . '_')) return true;
+                if (str_starts_with($p, $prefix . '_')) return true;
             }
         }
 
-        // Action fallback: 
-        // If checking for 'master_item_create', allow if they have 'master_item_view'
-        if (str_contains($permission, '_')) {
-            $parts = explode('_', $permission);
-            array_pop($parts);
-            $moduleBase = implode('_', $parts);
-            if (in_array($moduleBase . '_view', $userPerms)) return true;
-            
-            // Second level fallback (e.g. master_data_view allows master_item_view)
-            if (count($parts) > 1) {
-                array_pop($parts);
-                $rootBase = implode('_', $parts);
-                if (in_array($rootBase . '_view', $userPerms)) return true;
+        // 5. Action fallback: Allow sub-actions if have base view (e.g. master_item_create allowed if has master_item_view)
+        // This only applies to standard actions (create, edit, delete, store, update, destroy)
+        $standardActions = ['create', 'edit', 'delete', 'store', 'update', 'destroy', 'show'];
+        foreach ($standardActions as $action) {
+            if (str_contains($permission, '_' . $action)) {
+                $baseModule = str_replace('_' . $action, '', $permission);
+                if (in_array($baseModule . '_view', $userPerms)) return true;
             }
         }
 

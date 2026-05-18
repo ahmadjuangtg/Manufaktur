@@ -135,6 +135,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/work_orders', [\App\Http\Controllers\ProductionController::class, 'store'])->name('production.work_orders.store');
         Route::get('/work-orders/get-template/{id}', [\App\Http\Controllers\ProductionController::class, 'getTemplate'])->name('production.work_orders.get_template');
         Route::post('/work-orders/update-status/{id}', [\App\Http\Controllers\ProductionController::class, 'updateStatus'])->name('production.work_orders.update_status');
+        Route::get('/work-orders/get-stages/{id}', [\App\Http\Controllers\ProductionController::class, 'getStages'])->name('production.work_orders.get_stages');
         
         // Scheduling
         Route::get('/scheduling', [\App\Http\Controllers\SchedulingController::class, 'index'])->name('production.scheduling.index');
@@ -170,6 +171,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('production/reports')->group(function () {
         Route::get('/lhp', [\App\Http\Controllers\ProductionReportController::class, 'indexLHP'])->name('production.reports.lhp');
         Route::get('/handover', [\App\Http\Controllers\ProductionReportController::class, 'indexHandover'])->name('production.reports.handover');
+        Route::get('/handover/print/{id}', [\App\Http\Controllers\ProductionReportController::class, 'printHandover'])->name('production.reports.handover.print');
         Route::post('/handover', [\App\Http\Controllers\ProductionReportController::class, 'storeHandover'])->name('production.reports.handover.store');
         Route::post('/handover/verify/{id}', [\App\Http\Controllers\ProductionReportController::class, 'verifyHandover'])->name('production.reports.handover.verify');
     });

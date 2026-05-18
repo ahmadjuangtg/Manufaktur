@@ -22,7 +22,7 @@ class ProductionReportController extends Controller
     public function indexHandover()
     {
         $data = ProductionTransfer::with(['workOrder', 'fromWarehouse', 'toWarehouse', 'requester', 'verifier'])->latest()->get();
-        $workOrders = WorkOrder::where('status', 'completed')->get(); // Only completed WOs can be transferred
+        $workOrders = WorkOrder::whereIn('status', ['in_progress', 'completed'])->get(); 
         $warehouses = Warehouse::all();
         return view('production.reports.handover', compact('data', 'workOrders', 'warehouses'));
     }
@@ -31,6 +31,7 @@ class ProductionReportController extends Controller
     {
         $request->validate([
             'work_order_id' => 'required|exists:work_orders,id',
+            'work_order_stage_id' => 'nullable|exists:work_order_stages,id',
             'type' => 'required|in:NPB,PHP',
             'quantity' => 'required|numeric|min:0.01',
             'from_warehouse_id' => 'required|exists:warehouses,id',
@@ -42,6 +43,7 @@ class ProductionReportController extends Controller
         ProductionTransfer::create([
             'reference_no' => ($request->type === 'PHP' ? 'PHP-' : 'NPB-') . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3))),
             'work_order_id' => $request->work_order_id,
+            'work_order_stage_id' => $request->work_order_stage_id,
             'type' => $request->type,
             'quantity' => $request->quantity,
             'from_warehouse_id' => $request->from_warehouse_id,
@@ -64,36 +66,61 @@ class ProductionReportController extends Controller
                 'verified_at' => now()
             ]);
 
-            // If it's PHP (to FG Warehouse), update the actual stock
-            // We need to know WHICH item is being transferred.
-            // Usually it's the product of the Work Order.
             $wo = $transfer->workOrder;
-            foreach ($wo->products as $product) {
-                // Increase stock in TO warehouse
+            $itemsToTransfer = [];
+
+            // Case A: Handover for a specific STAGE (WIP / Intermediate Output)
+            if ($transfer->work_order_stage_id) {
+                $stage = \App\Models\WorkOrderStage::with('items')->find($transfer->work_order_stage_id);
+                $outputs = $stage->items->where('type', 'output');
+                foreach ($outputs as $out) {
+                    $itemsToTransfer[] = [
+                        'item_id' => $out->item_id,
+                        'quantity' => $transfer->quantity // Usually matches the report qty
+                    ];
+                }
+            } 
+            // Case B: Handover for the entire WO (Finished Goods)
+            else {
+                foreach ($wo->products as $product) {
+                    $itemsToTransfer[] = [
+                        'item_id' => $product->item_id,
+                        'quantity' => $transfer->quantity
+                    ];
+                }
+            }
+
+            foreach ($itemsToTransfer as $target) {
+                // 1. Increase stock in TO warehouse
                 StockTransaction::create([
-                    'item_id' => $product->item_id,
+                    'item_id' => $target['item_id'],
                     'warehouse_id' => $transfer->to_warehouse_id,
                     'type' => 'IN',
-                    'quantity' => $transfer->quantity, // Usually based on total produced
+                    'quantity' => $target['quantity'],
                     'reference_no' => $transfer->reference_no,
                     'user_id' => Auth::id(),
-                    'note' => 'Penerimaan Hasil Produksi (PHP): ' . $wo->wo_number
+                    'note' => 'Penerimaan Hasil Produksi (' . $transfer->type . '): ' . $wo->wo_number
                 ]);
                 
-                // If it came from another warehouse, decrease stock there
-                // (e.g., from WIP warehouse)
+                // 2. Decrease stock in FROM warehouse
                 StockTransaction::create([
-                    'item_id' => $product->item_id,
+                    'item_id' => $target['item_id'],
                     'warehouse_id' => $transfer->from_warehouse_id,
                     'type' => 'OUT',
-                    'quantity' => $transfer->quantity,
+                    'quantity' => $target['quantity'],
                     'reference_no' => $transfer->reference_no,
                     'user_id' => Auth::id(),
-                    'note' => 'Penyerahan Barang Produksi (NPB/PHP): ' . $wo->wo_number
+                    'note' => 'Penyerahan Hasil Produksi (' . $transfer->type . '): ' . $wo->wo_number
                 ]);
             }
         });
 
         return redirect()->back()->with('success', 'Serah terima berhasil diverifikasi dan stok telah diperbarui.');
+    }
+
+    public function printHandover($id)
+    {
+        $transfer = ProductionTransfer::with(['workOrder.products.item', 'fromWarehouse', 'toWarehouse', 'requester', 'verifier'])->findOrFail($id);
+        return view('production.reports.handover_print', compact('transfer'));
     }
 }
