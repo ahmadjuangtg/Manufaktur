@@ -12,61 +12,68 @@
         </button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="space-y-6">
         @forelse($data as $b)
         <div class="glass-card p-6 rounded-[2rem] border border-white/5 relative overflow-hidden group">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-emerald-600/5 blur-[50px] rounded-full -mr-16 -mt-16"></div>
+            <div class="absolute top-0 right-0 w-48 h-48 bg-indigo-600/5 blur-[80px] rounded-full -mr-24 -mt-24"></div>
             
-            <div class="flex justify-between items-start mb-6">
-                <div class="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-400">
-                    <i data-lucide="truck" class="w-6 h-6"></i>
-                </div>
-                <span class="px-3 py-1 bg-slate-800 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5">
-                    {{ $b->status }}
-                </span>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{{ $b->batch_no }}</div>
-                    <h4 class="text-white font-bold">{{ $b->destination }}</h4>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+            <!-- Main Info Row -->
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-white/5">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-emerald-400 shrink-0">
+                        <i data-lucide="truck" class="w-6 h-6"></i>
+                    </div>
                     <div>
-                        <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Driver</div>
+                        <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{{ $b->batch_no }}</div>
+                        <h4 class="text-white font-bold text-base">{{ $b->destination }}</h4>
+                        <div class="text-[10px] text-slate-500 mt-1">Dibuat oleh: {{ $b->user->name ?? 'Admin' }} | {{ $b->created_at->format('d M Y H:i') }}</div>
+                    </div>
+                </div>
+
+                <!-- Driver & Vehicle Details -->
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="bg-white/[0.02] px-4 py-3 rounded-xl border border-white/5">
+                        <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Nama Supir</div>
                         <div class="text-xs text-white font-bold">{{ $b->driver_name ?? '-' }}</div>
                     </div>
-                    <div>
-                        <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Vehicle No</div>
+                    <div class="bg-white/[0.02] px-4 py-3 rounded-xl border border-white/5">
+                        <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">No. Kendaraan</div>
                         <div class="text-xs text-white font-bold">{{ $b->vehicle_no ?? '-' }}</div>
                     </div>
+                    <div class="text-right">
+                        <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Status</div>
+                        <span class="px-3 py-1.5 bg-slate-800 text-emerald-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5">
+                            {{ $b->status }}
+                        </span>
+                    </div>
                 </div>
+            </div>
 
-                <div class="pt-4 border-t border-white/5">
-                    <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Included Packing Lists & Customers</div>
-                    <div class="space-y-1.5">
-                        @foreach($b->packingLists as $pl)
-                        <div class="flex items-center justify-between text-[10px] py-0.5">
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 bg-white/5 text-slate-400 font-bold rounded">
+            <!-- Packing Lists Section -->
+            <div class="mt-6">
+                <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Included Packing Lists & Customers</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    @foreach($b->packingLists as $pl)
+                    <div class="p-4 bg-white/[0.02] rounded-2xl border border-white/5 flex justify-between items-center gap-4 hover:bg-white/[0.04] transition-all">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 bg-indigo-500/10 text-indigo-400 text-[9px] font-bold rounded border border-indigo-500/20">
                                     {{ $pl->packing_no }}
                                 </span>
-                                <span class="text-emerald-400 font-medium">
-                                    {{ $pl->customer->name ?? 'Manual' }}
-                                </span>
+                                <span class="text-xs text-white font-bold">{{ $pl->customer->name ?? 'Manual' }}</span>
                             </div>
-                            <a href="{{ route('logistics.delivery.print', $pl->id) }}" target="_blank" class="p-1 hover:bg-indigo-600/20 text-indigo-400 hover:text-white rounded-lg transition-all border border-indigo-500/0 hover:border-indigo-500/20" title="Cetak Surat Jalan">
-                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-                            </a>
+                            <div class="text-[9px] text-slate-500 truncate w-60" title="{{ $pl->customer->address ?? 'Tanpa Alamat' }}">{{ $pl->customer->address ?? 'Tanpa Alamat' }}</div>
                         </div>
-                        @endforeach
+                        <a href="{{ route('logistics.delivery.print', $pl->id) }}" target="_blank" class="p-2 bg-indigo-600/10 hover:bg-indigo-600/30 text-indigo-400 hover:text-white rounded-xl transition-all border border-indigo-500/20" title="Cetak Surat Jalan">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                        </a>
                     </div>
+                    @endforeach
                 </div>
             </div>
         </div>
         @empty
-        <div class="col-span-full glass-card p-20 rounded-[2rem] border border-white/5 text-center">
+        <div class="glass-card p-20 rounded-[2rem] border border-white/5 text-center">
             <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-600">
                 <i data-lucide="map-pin" class="w-10 h-10"></i>
             </div>
