@@ -47,13 +47,18 @@
                     <div class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Included Packing Lists & Customers</div>
                     <div class="space-y-1.5">
                         @foreach($b->packingLists as $pl)
-                        <div class="flex items-center justify-between text-[10px]">
-                            <span class="px-2 py-0.5 bg-white/5 text-slate-400 font-bold rounded">
-                                {{ $pl->packing_no }}
-                            </span>
-                            <span class="text-emerald-400 font-medium">
-                                {{ $pl->customer->name ?? 'Manual' }}
-                            </span>
+                        <div class="flex items-center justify-between text-[10px] py-0.5">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 bg-white/5 text-slate-400 font-bold rounded">
+                                    {{ $pl->packing_no }}
+                                </span>
+                                <span class="text-emerald-400 font-medium">
+                                    {{ $pl->customer->name ?? 'Manual' }}
+                                </span>
+                            </div>
+                            <a href="{{ route('logistics.delivery.print', $pl->id) }}" target="_blank" class="p-1 hover:bg-indigo-600/20 text-indigo-400 hover:text-white rounded-lg transition-all border border-indigo-500/0 hover:border-indigo-500/20" title="Cetak Surat Jalan">
+                                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                            </a>
                         </div>
                         @endforeach
                     </div>
