@@ -24,7 +24,7 @@ class MachineController extends Controller
             'active' => Machine::where('is_active', true)->count()
         ];
 
-        $data = $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString();
+        $data = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
         $categories = MachineCategory::all();
         $suppliers = Supplier::all();
         $warehouses = Warehouse::all();

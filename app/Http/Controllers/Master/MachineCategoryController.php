@@ -15,7 +15,7 @@ class MachineCategoryController extends Controller
             $query->where('name', 'LIKE', "%{$request->search}%")
                   ->orWhere('code', 'LIKE', "%{$request->search}%");
         }
-        $data = $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString();
+        $data = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
         return view('master.machine_categories.index', compact('data'))->with('search', $request->search);
     }
 

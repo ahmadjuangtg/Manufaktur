@@ -64,12 +64,36 @@ class LogisticsController extends Controller
     }
 
     // --- Delivery Batch ---
-    public function indexDelivery()
+    public function indexDelivery(Request $request)
     {
-        $data = DeliveryBatch::with(['packingLists.customer', 'user'])->latest()->get();
+        $query = DeliveryBatch::with(['packingLists.customer', 'user']);
+
+        // Search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('batch_no', 'like', "%{$search}%")
+                  ->orWhere('driver_name', 'like', "%{$search}%")
+                  ->orWhere('vehicle_no', 'like', "%{$search}%")
+                  ->orWhere('destination', 'like', "%{$search}%")
+                  ->orWhereHas('packingLists.customer', function($qc) use ($search) {
+                      $qc->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Status filter
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $data = $query->latest()->paginate(10)->withQueryString();
         $availablePackingLists = PackingList::with('customer')->whereNull('delivery_batch_id')->where('status', 'READY')->get();
         $customers = \App\Models\Customer::all();
-        return view('logistics.delivery.index', compact('data', 'availablePackingLists', 'customers'));
+        
+        return view('logistics.delivery.index', compact('data', 'availablePackingLists', 'customers'))
+            ->with('search', $request->search)
+            ->with('status', $request->status);
     }
 
     public function storeDelivery(Request $request)

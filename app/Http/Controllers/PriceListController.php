@@ -56,7 +56,7 @@ class PriceListController extends Controller
 
         // Paginate the collection
         $currentPage = \Illuminate\Pagination\Paginator::resolveCurrentPage() ?: 1;
-        $perPage = 20;
+        $perPage = 10;
         $currentPageItems = $dataGrouped->slice(($currentPage - 1) * $perPage, $perPage)->all();
         $data = new \Illuminate\Pagination\LengthAwarePaginator($currentPageItems, count($dataGrouped), $perPage, $currentPage, [
             'path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(),

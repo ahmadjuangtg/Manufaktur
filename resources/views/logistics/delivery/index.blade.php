@@ -12,6 +12,33 @@
         </button>
     </div>
 
+    <!-- Search and Filter -->
+    <div class="glass-card p-6 rounded-3xl border border-white/5 bg-slate-800/20 mb-6">
+        <form action="{{ route('logistics.delivery.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center">
+            <div class="relative flex-1 w-full">
+                <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari No. Batch, Supir, No. Kendaraan, atau Customer..." class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-3.5 pl-12 pr-6 text-white text-sm font-bold outline-none focus:border-indigo-500 transition-all shadow-inner">
+            </div>
+            
+            <div class="w-full md:w-48">
+                <select name="status" class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-3.5 px-6 text-white text-sm font-bold outline-none focus:border-indigo-500 transition-all">
+                    <option value="">Semua Status</option>
+                    <option value="PENDING" {{ ($status ?? '') == 'PENDING' ? 'selected' : '' }}>PENDING</option>
+                    <option value="ON_DELIVERY" {{ ($status ?? '') == 'ON_DELIVERY' ? 'selected' : '' }}>ON_DELIVERY</option>
+                    <option value="COMPLETED" {{ ($status ?? '') == 'COMPLETED' ? 'selected' : '' }}>COMPLETED</option>
+                </select>
+            </div>
+
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 w-full md:w-auto shrink-0">
+                Filter
+            </button>
+            
+            @if(($search ?? '') || ($status ?? ''))
+                <a href="{{ route('logistics.delivery.index') }}" class="text-slate-500 hover:text-white text-sm font-bold px-4 shrink-0">Reset</a>
+            @endif
+        </form>
+    </div>
+
     <div class="glass-card rounded-[2rem] border border-white/5 bg-slate-900/20 overflow-hidden">
         <div class="p-8 border-b border-white/5 bg-slate-800/30">
             <h4 class="text-[12px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3">
@@ -86,6 +113,9 @@
                     @endforelse
                 </tbody>
             </table>
+        </div>
+        <div class="px-8 py-6 border-t border-white/5 bg-slate-800/20">
+            {{ $data->links() }}
         </div>
     </div>
 </div>

@@ -21,7 +21,7 @@ class WarehouseController extends Controller
             'active' => Warehouse::where('is_active', true)->count()
         ];
 
-        $data = $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString();
+        $data = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
         return view('master.warehouses.index', compact('data', 'stats'))->with('search', $request->search);
     }
 

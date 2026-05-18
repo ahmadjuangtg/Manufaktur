@@ -16,7 +16,7 @@ class CustomerController extends Controller
                   ->orWhere('code', 'LIKE', "%{$request->search}%")
                   ->orWhere('email', 'LIKE', "%{$request->search}%");
         }
-        $data = $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString();
+        $data = $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString();
         return view('master.customers.index', compact('data'))->with('search', $request->search);
     }
 

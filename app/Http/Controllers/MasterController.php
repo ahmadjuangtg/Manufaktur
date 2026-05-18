@@ -26,7 +26,7 @@ class MasterController extends Controller
             $query->where('name', 'LIKE', "%{$request->search}%");
         }
         return view('master.suppliers.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'items' => Item::select('id', 'name')->get(),
             'search' => $request->search
         ]); 
@@ -59,7 +59,7 @@ class MasterController extends Controller
                   ->orWhere('prefix', 'LIKE', "%{$request->search}%");
         }
         return view('master.categories.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'search' => $request->search
         ]); 
     }
@@ -87,7 +87,7 @@ class MasterController extends Controller
                   ->orWhere('prefix', 'LIKE', "%{$request->search}%");
         }
         return view('master.types.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'search' => $request->search
         ]); 
     }
@@ -115,7 +115,7 @@ class MasterController extends Controller
                   ->orWhere('code', 'LIKE', "%{$request->search}%");
         }
         return view('master.manufacturers.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'search' => $request->search
         ]); 
     }
@@ -145,7 +145,7 @@ class MasterController extends Controller
                   ->orWhere('code', 'LIKE', "%{$request->search}%");
         }
         return view('master.units.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'search' => $request->search
         ]); 
     }
@@ -183,7 +183,7 @@ class MasterController extends Controller
         }
 
         return view('master.items.index', [
-            'data' => $query->orderBy('updated_at', 'desc')->paginate(20)->withQueryString(),
+            'data' => $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString(),
             'categories' => Category::select('id', 'name')->get(), 
             'types' => Type::select('id', 'name')->get(), 
             'manufacturers' => Manufacturer::select('id', 'name')->get(), 

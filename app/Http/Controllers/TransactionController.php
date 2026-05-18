@@ -19,7 +19,7 @@ class TransactionController extends Controller
         // Use pagination instead of get() for large datasets
         $data = StockTransaction::with(['item', 'warehouse', 'user'])
             ->latest()
-            ->paginate(50)
+            ->paginate(10)
             ->withQueryString();
 
         // Efficiently fetch master list for dropdowns
@@ -110,7 +110,7 @@ class TransactionController extends Controller
             $data->orderBy('stock_opnames.' . $sort_by, $sort_order);
         }
 
-        $data = $data->paginate(20)->withQueryString();
+        $data = $data->paginate(10)->withQueryString();
         $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
         
         return view('transactions.opname.index', compact('data', 'warehouses'));
@@ -255,7 +255,7 @@ class TransactionController extends Controller
             $transactions = StockTransaction::where('item_id', $item_id)
                 ->with('warehouse')
                 ->latest()
-                ->paginate(50)
+                ->paginate(10)
                 ->withQueryString();
             
             $stock_data = InventoryStock::where('item_id', $item_id)
@@ -287,7 +287,7 @@ class TransactionController extends Controller
                   ->orWhere('items.code', 'like', "%{$search}%");
             })
             ->groupBy('items.id')
-            ->paginate(20)
+            ->paginate(10)
             ->withQueryString();
 
         $total_items = Item::count();

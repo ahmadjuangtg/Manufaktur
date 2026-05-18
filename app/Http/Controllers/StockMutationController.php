@@ -176,7 +176,7 @@ class StockMutationController extends Controller
                 $q->where('status', $status);
             })
             ->latest()
-            ->paginate(20)
+            ->paginate(10)
             ->withQueryString();
 
         $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
@@ -234,7 +234,7 @@ class StockMutationController extends Controller
             });
         }
 
-        $data = $query->latest()->paginate(15)->withQueryString();
+        $data = $query->latest()->paginate(10)->withQueryString();
         $warehouses = Warehouse::all();
         
         return view('transactions.mutations.rekap', compact('data', 'warehouses'));
