@@ -31,4 +31,9 @@ class Item extends Model {
                     ->withPivot('conversion_ratio', 'notes')
                     ->withTimestamps();
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(InventoryStock::class);
+    }
 }

@@ -16,7 +16,10 @@ class LogisticsController extends Controller
     public function indexPacking()
     {
         $data = PackingList::with(['details.item', 'user', 'deliveryBatch'])->latest()->get();
-        $items = Item::with('unit')->get();
+        $items = Item::with('unit')
+            ->whereHas('stocks', function ($query) {
+                $query->where('current_stock', '>', 0);
+            })->get();
         return view('logistics.packing.index', compact('data', 'items'));
     }
 
