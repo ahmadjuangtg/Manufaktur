@@ -290,7 +290,15 @@ class TransactionController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('transactions.stock_card.index', compact('items', 'search'));
+        $total_items = Item::count();
+        $items_with_sufficient_stock = InventoryStock::selectRaw('item_id, SUM(current_stock - lock_stock) as available')
+            ->groupBy('item_id')
+            ->havingRaw('SUM(current_stock - lock_stock) >= 10')
+            ->get()
+            ->count();
+        $low_stock_count = $total_items - $items_with_sufficient_stock;
+
+        return view('transactions.stock_card.index', compact('items', 'search', 'total_items', 'low_stock_count'));
     }
 
     public function printStockCard($id)

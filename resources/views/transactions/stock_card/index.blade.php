@@ -9,6 +9,22 @@
         </div>
     </div>
 
+    <!-- Stats Row -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="glass-card p-6 rounded-xl flex items-center gap-4 border border-white/5 bg-slate-900/50">
+            <div class="w-12 h-12 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-500"><i data-lucide="package" class="w-6 h-6"></i></div>
+            <div><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Total SKUs</p><p class="text-xl font-black text-white">{{ $total_items }}</p></div>
+        </div>
+        <div class="glass-card p-6 rounded-xl flex items-center gap-4 border border-white/5 bg-slate-900/50">
+            <div class="w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+            <div><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Active Items</p><p class="text-xl font-black text-white">{{ $total_items }}</p></div>
+        </div>
+        <div class="glass-card p-6 rounded-xl flex items-center gap-4 border border-white/5 bg-slate-900/50">
+            <div class="w-12 h-12 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500"><i data-lucide="alert-triangle" class="w-6 h-6"></i></div>
+            <div><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Low Stock (< 10)</p><p class="text-xl font-black text-white">{{ $low_stock_count }}</p></div>
+        </div>
+    </div>
+
     <!-- Search and Filter -->
     <div class="glass-card p-6 rounded-3xl border border-white/5 bg-slate-800/20 mb-8">
         <form action="{{ route('stock_card.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center">
