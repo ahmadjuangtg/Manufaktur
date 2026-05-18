@@ -25,7 +25,23 @@
                     </div>
                     <div>
                         <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{{ $b->batch_no }}</div>
-                        <h4 class="text-white font-bold text-base">{{ $b->destination }}</h4>
+                        <div class="flex flex-wrap items-center gap-2 mt-1.5 mb-2">
+                            @php
+                                $destinations = array_filter(array_map('trim', explode("\n", str_replace("\r", "", $b->destination))));
+                            @endphp
+                            @foreach($destinations as $index => $dest)
+                                @php
+                                    $cleanDest = preg_replace('/^\d+\.\s*/', '', $dest);
+                                @endphp
+                                @if($index > 0)
+                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-600"></i>
+                                @endif
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-200 text-xs font-bold rounded-xl shadow-sm">
+                                    <span class="px-1.5 py-0.5 bg-indigo-500 text-white text-[8px] font-black uppercase rounded mr-0.5 tracking-wider">Tujuan {{ $index + 1 }}</span>
+                                    {{ $cleanDest }}
+                                </span>
+                            @endforeach
+                        </div>
                         <div class="text-[10px] text-slate-500 mt-1">Dibuat oleh: {{ $b->user->name ?? 'Admin' }} | {{ $b->created_at->format('d M Y H:i') }}</div>
                     </div>
                 </div>
