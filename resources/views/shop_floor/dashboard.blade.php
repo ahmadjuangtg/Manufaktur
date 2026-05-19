@@ -136,8 +136,23 @@
                                 <div class="space-y-3">
                                     @forelse($active->items as $item)
                                     @php
-                                        $totalDelivered = $active->workOrder->mutations->flatMap->deliveries->where('item_id', $item->item_id)->sum('quantity');
-                                        $isSatisfied = $totalDelivered >= $item->quantity;
+                                        $requiredQty = $item->quantity_total > 0 ? $item->quantity_total : ($item->quantity ?? 0);
+                                        
+                                        $totalDelivered = 0;
+                                        foreach ($active->workOrder->mutations as $mut) {
+                                            if ($mut->status === 'COMPLETED') {
+                                                $deliverySum = $mut->deliveries->where('item_id', $item->item_id)->sum('quantity');
+                                                if ($deliverySum > 0) {
+                                                    $totalDelivered += $deliverySum;
+                                                } else {
+                                                    $totalDelivered += $mut->details->where('item_id', $item->item_id)->sum('quantity');
+                                                }
+                                            } else {
+                                                $totalDelivered += $mut->deliveries->where('item_id', $item->item_id)->sum('quantity');
+                                            }
+                                        }
+
+                                        $isSatisfied = $totalDelivered >= $requiredQty;
                                         $hasSome = $totalDelivered > 0;
                                     @endphp
                                     <div class="flex items-center gap-3 p-3 bg-white/[0.02] rounded-xl border border-white/5 {{ !$hasSome ? 'opacity-40 grayscale cursor-not-allowed' : '' }}">
@@ -156,7 +171,7 @@
                                                 @endif
                                             </div>
                                             <div class="flex items-center gap-2 mt-1">
-                                                <span class="text-[9px] text-slate-500">Minta: <strong>{{ number_format($item->quantity, 2) }} {{ $item->item->unit->name }}</strong></span>
+                                                <span class="text-[9px] text-slate-500">Minta: <strong>{{ number_format($requiredQty, 2) }} {{ $item->item->unit->name }}</strong></span>
                                                 <span class="text-[9px] text-slate-500">|</span>
                                                 <span class="text-[9px] text-slate-400">Realisasi: <strong class="{{ $hasSome ? 'text-indigo-400' : 'text-slate-500' }}">{{ number_format($totalDelivered, 2) }} {{ $item->item->unit->name }}</strong></span>
                                             </div>
