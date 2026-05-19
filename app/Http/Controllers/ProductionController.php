@@ -45,9 +45,9 @@ class ProductionController extends Controller
         $products = Item::with('unit')->whereHas('type', function($q) {
             $q->where('code', 'FIN')->orWhere('name', 'Barang Jadi');
         })->get();
-        $items = Item::with('unit')->get();
+        $items = Item::with(['unit', 'substitutes'])->get();
         $templates = ProductionTemplate::with('product')->get();
-        $machines = Machine::all();
+        $machines = Machine::with(['capabilities', 'substitutes.capabilities'])->get();
         
         $today = Carbon::today()->format('Ymd');
         $lastWO = WorkOrder::whereDate('created_at', Carbon::today())->latest()->first();

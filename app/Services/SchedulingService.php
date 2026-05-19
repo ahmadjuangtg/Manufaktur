@@ -105,8 +105,6 @@ class SchedulingService
         $stages = WorkOrderStage::whereIn('id', $stageIds)->get()->keyBy('id');
         
         $totalQty = DB::table('work_order_products')->where('work_order_id', $wo->id)->sum('quantity');
-        $totalBatch = $wo->total_batch ?? 1;
-        $grandTotalQty = $totalQty * $totalBatch;
 
         foreach ($stageMachines as $stageId => $machineId) {
             $newMachine = $machines->get($machineId);
@@ -114,9 +112,13 @@ class SchedulingService
             
             if ($newMachine && $stage && $newMachine->capacity > 0) {
                 $unit = strtolower($newMachine->capacity_unit ?? '');
+                
+                $stageBatch = $stage->total_batch ?? 1;
+                $stageQty = $totalQty * $stageBatch;
+                
                 $hours = (str_contains($unit, 'menit') || str_contains($unit, 'min')) 
-                    ? ($grandTotalQty / ($newMachine->capacity * 60)) 
-                    : ($grandTotalQty / $newMachine->capacity);
+                    ? ($stageQty / ($newMachine->capacity * 60)) 
+                    : ($stageQty / $newMachine->capacity);
                 
                 $stageHours = round($hours, 2);
                 

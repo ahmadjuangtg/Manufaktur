@@ -71,13 +71,19 @@ class ProductionService
     public function storeWorkOrder(array $data)
     {
         return DB::transaction(function () use ($data) {
+            $firstStageBatch = 1;
+            if (isset($data['stages']) && is_array($data['stages']) && count($data['stages']) > 0) {
+                $firstStageVal = reset($data['stages']);
+                $firstStageBatch = $firstStageVal['total_batch'] ?? 1;
+            }
+
             $workOrder = WorkOrder::create([
                 'wo_number' => $data['wo_number'],
                 'production_line' => $data['production_line'],
                 'production_date' => $data['production_date'],
                 'customer_id' => $data['customer_id'],
                 'marketing' => $data['marketing'] ?? null,
-                'total_batch' => $data['total_batch'] ?? 1,
+                'total_batch' => $firstStageBatch,
                 'duration' => $data['duration'] ?? null,
                 'stage_code' => $data['stage_code'] ?? null,
                 'composition_code' => $data['composition_code'] ?? null,
@@ -102,6 +108,7 @@ class ProductionService
                         'name' => $stageData['name'],
                         'sequence' => $index + 1,
                         'machine_id' => $stageData['machine_id'] ?? null,
+                        'total_batch' => $stageData['total_batch'] ?? 1,
                         'duration_hours' => $stageData['duration_hours'] ?? null,
                         'planned_start' => $stageData['planned_start'] ?? null,
                     ]);
@@ -112,7 +119,7 @@ class ProductionService
                                 'work_order_stage_id' => $stage->id,
                                 'item_id' => $item['item_id'],
                                 'quantity_per_batch' => $item['quantity'],
-                                'quantity_total' => $item['quantity'],
+                                'quantity_total' => $item['quantity'] * ($stageData['total_batch'] ?? 1),
                                 'type' => $item['type'] ?? 'MATERIAL'
                             ]);
                         }

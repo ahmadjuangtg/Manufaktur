@@ -57,7 +57,7 @@ class User extends Authenticatable
 
         // 4. Module-wide view fallback (e.g. master_data_view allowed if has any master_***_view)
         if ($permission === 'master_data_view' || $permission === 'order_view' || $permission === 'production_view') {
-            $prefix = str_replace('_view', '', $permission);
+            $prefix = ($permission === 'master_data_view') ? 'master' : str_replace('_view', '', $permission);
             foreach ($userPerms as $p) {
                 if (str_starts_with($p, $prefix . '_')) return true;
             }

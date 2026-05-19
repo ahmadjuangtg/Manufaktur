@@ -123,7 +123,7 @@
                         </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                        <div class="space-y-2">
+                        <div class="space-y-2 md:col-span-2">
                             <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Gunakan Template Produksi</label>
                             <select id="template_id" class="w-full bg-slate-900/50 border-white/5 rounded-2xl px-5 py-4 text-sm text-amber-400 font-bold focus:ring-2 focus:ring-amber-500/20 outline-none transition-all appearance-none cursor-pointer">
                                 <option value="">-- Pilih Template --</option>
@@ -132,10 +132,6 @@
                                 @endforeach
                             </select>
                             <p class="text-[9px] text-slate-500 italic mt-1">* Memilih template akan otomatis mengisi tahapan dan bahan di bawah.</p>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Total Batch Produksi</label>
-                            <input type="number" name="total_batch" id="total_batch" value="1" min="1" class="w-full bg-slate-900/50 border-white/5 rounded-2xl px-5 py-4 text-sm text-white font-bold focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all">
                         </div>
                     </div>
 
@@ -198,7 +194,7 @@
             <i data-lucide="x" class="w-4 h-4"></i>
         </button>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="space-y-2">
                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Nama Tahapan</label>
                 <input type="text" name="stages[__INDEX__][name]" required class="w-full bg-slate-900 border-white/5 rounded-xl px-4 py-3 text-xs text-white outline-none" placeholder="Contoh: Pencampuran Awal">
@@ -211,6 +207,13 @@
                     <option value="{{ $machine->id }}" data-capacity="{{ $machine->capacity }}" data-unit="{{ $machine->capacity_unit }}">{{ $machine->name }} ({{ $machine->capacity }} {{ $machine->capacity_unit }})</option>
                     @endforeach
                 </select>
+            </div>
+            <div class="space-y-2">
+                <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Total Batch Tahapan</label>
+                <div class="flex items-center gap-2 bg-slate-900 border border-white/5 rounded-xl px-4 py-3">
+                    <input type="number" step="0.01" name="stages[__INDEX__][total_batch]" required class="w-full bg-transparent border-none text-xs text-white outline-none stage-batch-input" placeholder="1.00" value="1.00" min="0.01">
+                    <span class="text-[8px] text-slate-500 font-black uppercase">BTH</span>
+                </div>
             </div>
             <div class="space-y-2">
                 <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Waktu Pengerjaan (Jam)</label>
@@ -248,9 +251,16 @@
 
 <template id="itemTemplate">
     <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-white/[0.01] p-3 rounded-xl border border-white/5 group/item">
+        <div class="md:col-span-2">
+            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][type]" required class="w-full bg-slate-800 border-transparent rounded-lg px-2 py-2 text-[9px] text-indigo-400 font-bold uppercase outline-none stage-item-type">
+                <option value="">-- TIPE --</option>
+                <option value="input">INPUT</option>
+                <option value="output">OUTPUT</option>
+            </select>
+        </div>
         <div class="md:col-span-6">
-            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][item_id]" required class="w-full bg-slate-800 border-transparent rounded-lg px-3 py-2 text-[10px] text-white outline-none">
-                <option value="">-- Pilih Item --</option>
+            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][item_id]" required disabled class="w-full bg-slate-800 border-transparent rounded-lg px-3 py-2 text-[10px] text-slate-400 outline-none stage-item-select">
+                <option value="">-- Pilih Tipe Terlebih Dahulu --</option>
                 @foreach($items as $item)
                 <option value="{{ $item->id }}" data-unit="{{ $item->unit->name ?? '' }}" class="text-white bg-slate-800">{{ $item->code }} - {{ $item->name }}</option>
                 @endforeach
@@ -262,12 +272,6 @@
                 <input type="text" class="w-12 bg-transparent border-none text-[9px] text-indigo-400 font-black uppercase outline-none unit-display" readonly placeholder="Unit">
             </div>
         </div>
-        <div class="md:col-span-2">
-            <select name="stages[__STAGE_INDEX__][items][__ITEM_INDEX__][type]" class="w-full bg-slate-800 border-transparent rounded-lg px-2 py-2 text-[9px] text-indigo-400 font-bold uppercase outline-none stage-item-type">
-                <option value="input">INPUT</option>
-                <option value="output">OUTPUT</option>
-            </select>
-        </div>
         <div class="md:col-span-1 flex justify-center">
             <button type="button" class="text-slate-700 hover:text-rose-500 transition-colors remove-item">
                 <i data-lucide="trash" class="w-4 h-4"></i>
@@ -276,10 +280,45 @@
     </div>
 </template>
 
+<?php
+    // 1. Map Machine Capabilities
+    $capData = $machines->keyBy('id')->map(function($m) {
+        return $m->capabilities->map(function($c) {
+            return [
+                'item_id' => $c->id,
+                'production_rate' => floatval($c->pivot->production_rate),
+                'capacity_unit' => $c->pivot->rate_unit ?? $c->pivot->capacity_unit ?? 'kg/jam',
+                'thickness' => $c->pivot->thickness,
+                'diameter' => $c->pivot->diameter,
+                'cavity' => $c->pivot->cavity,
+                'cycle' => floatval($c->pivot->cycle),
+            ];
+        });
+    });
+
+    // 2. Map Machine Substitutes
+    $machineSubData = $machines->keyBy('id')->map(function($m) {
+        return $m->substitutes->pluck('id')->toArray();
+    });
+
+    // 3. Map Item Substitutions
+    $itemSubData = $items->keyBy('id')->map(function($item) {
+        return $item->substitutes->pluck('id')->toArray();
+    });
+?>
 <script>
     // Global state
     let productCount = 1;
     let stageCount = 0;
+
+    // Machine Capabilities Matrix (loaded from database)
+    const machineCapabilities = {!! json_encode($capData) !!};
+
+    // Machine Substitutes Matrix
+    const machineSubstitutes = {!! json_encode($machineSubData) !!};
+
+    // Item Substitutions Matrix
+    const itemSubstitutions = {!! json_encode($itemSubData) !!};
 
     // --- New Features & Validations ---
 
@@ -421,9 +460,11 @@
                 const nameInp = stageBlock.querySelector('input[name*="[name]"]');
                 const machineSel = stageBlock.querySelector('select[name*="[machine_id]"]');
                 const durInp = stageBlock.querySelector('.duration-hours-input');
+                const batchInp = stageBlock.querySelector('.stage-batch-input');
 
                 if (nameInp) nameInp.value = data.name || '';
                 if (machineSel) machineSel.value = data.machine_id || '';
+                if (batchInp && data.total_batch) batchInp.value = data.total_batch;
                 if (durInp && data.duration_hours) durInp.value = data.duration_hours;
 
                 if (data.items) {
@@ -464,6 +505,11 @@
                 const qtyInp = itemRow.querySelector('input[name*="[quantity]"]');
                 const typeSel = itemRow.querySelector('select[name*="[type]"]');
                 
+                if (typeSel) typeSel.value = data.type || 'input';
+                
+                // Trigger filtering immediately so options are correctly populated before setting the item select value
+                filterStageItems(stageBlock);
+                
                 if (select) {
                     select.value = data.item_id;
                     const selected = select.options[select.selectedIndex];
@@ -473,7 +519,9 @@
                     }
                 }
                 if (qtyInp) qtyInp.value = data.quantity || data.quantity_per_batch || 0;
-                if (typeSel) typeSel.value = data.type || 'input';
+            } else {
+                // For a new empty row, run filtering to disable it initially
+                filterStageItems(stageBlock);
             }
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -513,8 +561,6 @@
 
     function updateAllDurations(sourceElement = null) {
         const prodDateInput = document.getElementById('production_date');
-        const totalBatchInput = document.getElementById('total_batch');
-        const totalBatch = parseFloat(totalBatchInput ? totalBatchInput.value : 1) || 1;
         
         if (!prodDateInput || !prodDateInput.value) return;
 
@@ -524,7 +570,7 @@
             if (qtyInput) totalQty += parseFloat(qtyInput.value) || 0;
         });
 
-        const grandTotalQty = totalQty * totalBatch;
+        const grandTotalQty = totalQty;
 
         let totalHours = 0;
         const stages = document.querySelectorAll('.stage-block');
@@ -535,22 +581,122 @@
         stages.forEach((stage, idx) => {
             const machineSelect = stage.querySelector('select[name*="[machine_id]"]');
             const durationInput = stage.querySelector('.duration-hours-input');
+            const batchInput = stage.querySelector('.stage-batch-input');
+            const totalBatch = parseFloat(batchInput ? batchInput.value : 1) || 1;
             const startInput = stage.querySelector('.planned-start-input');
             const endDisplay = stage.querySelector('.planned-end-display');
             
-            // 1. Calculate Duration (only if triggered by machine/qty change OR if empty)
+            // 1. Calculate Duration (only if triggered by machine/qty/item change OR if empty)
             let hours = parseFloat(durationInput ? durationInput.value : 0) || 0;
-            if (sourceElement && (sourceElement.matches('select[name*="[machine_id]"]') || sourceElement.matches('input[name*="[quantity]"]') || sourceElement.id === 'total_batch')) {
+            if (sourceElement && (
+                sourceElement.matches('select[name*="[machine_id]"]') || 
+                sourceElement.matches('input[name*="[quantity]"]') || 
+                sourceElement.matches('select[name*="[item_id]"]') ||
+                sourceElement.matches('select[name*="[type]"]') ||
+                sourceElement.matches('.stage-batch-input')
+            )) {
                 if (machineSelect && machineSelect.value) {
-                    const selected = machineSelect.options[machineSelect.selectedIndex];
-                    const capacity = parseFloat(selected.dataset.capacity) || 0;
-                    const unit = (selected.dataset.unit || '').toLowerCase();
+                    const machineId = machineSelect.value;
+                    const selectedMachineOpt = machineSelect.options[machineSelect.selectedIndex];
+                    
+                    // Default values from machine option dataset
+                    let capacity = parseFloat(selectedMachineOpt.dataset.capacity) || 0;
+                    let unit = (selectedMachineOpt.dataset.unit || '').toLowerCase();
+                    
+                    // Look for selected item inside the stage items
+                    let selectedItemId = null;
+                    let selectedItemQty = 0;
+                    let foundCapability = null;
+                    
+                    const itemRows = stage.querySelectorAll('.item-rows > div');
+                    let itemsInStage = [];
+                    
+                    itemRows.forEach(row => {
+                        const typeSelect = row.querySelector('.stage-item-type');
+                        const itemSelect = row.querySelector('select[name*="[item_id]"]');
+                        const qtyInput = row.querySelector('input[name*="[quantity]"]');
+                        
+                        if (itemSelect && itemSelect.value) {
+                            itemsInStage.push({
+                                item_id: parseInt(itemSelect.value),
+                                qty: parseFloat(qtyInput ? qtyInput.value : 0) || 0,
+                                type: typeSelect ? typeSelect.value : 'input'
+                            });
+                        }
+                    });
+                    
+                    // Prioritize finding an item in this stage that actually has a registered machine capability
+                    if (machineCapabilities[machineId] && itemsInStage.length > 0) {
+                        const capabilities = Object.values(machineCapabilities[machineId]);
+                        
+                        // 1. Try matching OUTPUT items with capabilities
+                        const outputItems = itemsInStage.filter(i => i.type === 'output');
+                        for (let item of outputItems) {
+                            let cap = capabilities.find(c => c.item_id === item.item_id);
+                            if (cap && cap.production_rate > 0) {
+                                foundCapability = cap;
+                                selectedItemId = item.item_id;
+                                selectedItemQty = item.qty;
+                                break;
+                            }
+                        }
+                        
+                        // 2. Try matching INPUT items with capabilities
+                        if (!foundCapability) {
+                            const inputItems = itemsInStage.filter(i => i.type === 'input');
+                            for (let item of inputItems) {
+                                let cap = capabilities.find(c => c.item_id === item.item_id);
+                                if (cap && cap.production_rate > 0) {
+                                    foundCapability = cap;
+                                    selectedItemId = item.item_id;
+                                    selectedItemQty = item.qty;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 3. Fallback: If no capability match is found in the matrix, pick the first output (or first input) to at least use its quantity
+                    if (!selectedItemId && itemsInStage.length > 0) {
+                        const fallbackItem = itemsInStage.find(i => i.type === 'output') || itemsInStage[0];
+                        selectedItemId = fallbackItem.item_id;
+                        selectedItemQty = fallbackItem.qty;
+                    }
+                    
+                    // 4. Fallback 2: If the stage is empty, fall back to the first product (Finished Good) of the WO
+                    if (!selectedItemId) {
+                        const firstProductRow = document.querySelector('.product-row');
+                        if (firstProductRow) {
+                            const prodSelect = firstProductRow.querySelector('select[name*="[item_id]"]');
+                            const prodQty = firstProductRow.querySelector('input[name*="[quantity]"]');
+                            if (prodSelect && prodSelect.value) {
+                                selectedItemId = parseInt(prodSelect.value);
+                                selectedItemQty = parseFloat(prodQty ? prodQty.value : 0) || 0;
+                                
+                                // Check if this main product has a capability on the machine
+                                if (machineCapabilities[machineId]) {
+                                    const capabilities = Object.values(machineCapabilities[machineId]);
+                                    foundCapability = capabilities.find(c => c.item_id === selectedItemId);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // If capability is found, override default machine capacity
+                    if (foundCapability && foundCapability.production_rate > 0) {
+                        capacity = foundCapability.production_rate;
+                        unit = (foundCapability.capacity_unit || '').toLowerCase();
+                        console.log(`Using specific capability for machine ${machineId} and item ${selectedItemId}: ${capacity} ${unit}`);
+                    }
+                    
+                    // Determine the target quantity to process in this stage
+                    const qtyToUse = (selectedItemQty > 0) ? (selectedItemQty * totalBatch) : grandTotalQty;
                     
                     if (capacity > 0) {
                         if (unit.includes('menit') || unit.includes('min')) {
-                            hours = grandTotalQty / (capacity * 60);
+                            hours = qtyToUse / (capacity * 60);
                         } else {
-                            hours = grandTotalQty / capacity;
+                            hours = qtyToUse / capacity;
                         }
                         if (durationInput) durationInput.value = hours.toFixed(2);
                     }
@@ -579,6 +725,209 @@
 
             nextStartTime = endTime;
         });
+    }
+
+    function filterStageItems(stageBlock) {
+        if (!stageBlock) return;
+        
+        const machineSelect = stageBlock.querySelector('select[name*="[machine_id]"]');
+        const machineId = machineSelect ? machineSelect.value : '';
+        const itemRows = stageBlock.querySelectorAll('.item-rows > .group\\/item');
+        
+        itemRows.forEach(row => {
+            const typeSelect = row.querySelector('.stage-item-type');
+            const itemSelect = row.querySelector('select[name*="[item_id]"]');
+            
+            if (!itemSelect) return;
+            
+            // Backup the original options if not already done
+            if (!itemSelect.originalOptions) {
+                itemSelect.originalOptions = Array.from(itemSelect.options);
+            }
+            
+            const currentValue = itemSelect.value;
+            const originalOptions = itemSelect.originalOptions;
+            
+            // Check if Type is selected
+            const typeVal = typeSelect ? typeSelect.value : '';
+            if (!typeVal) {
+                // If type is not chosen, disable the dropdown and show the warning placeholder
+                itemSelect.disabled = true;
+                itemSelect.classList.remove('text-white');
+                itemSelect.classList.add('text-slate-400');
+                itemSelect.innerHTML = '<option value="">-- Pilih Tipe Terlebih Dahulu --</option>';
+                const unitDisp = row.querySelector('.unit-display');
+                if (unitDisp) unitDisp.value = '';
+                return;
+            }
+            
+            // Type is selected -> enable it!
+            itemSelect.disabled = false;
+            itemSelect.classList.remove('text-slate-400');
+            itemSelect.classList.add('text-white');
+            
+            // Determine matching items if type is OUTPUT
+            let allowedItemIds = null;
+            if (typeVal === 'output' && machineId) {
+                allowedItemIds = new Set();
+                
+                // 1. Add capable items from machineCapabilities[machineId]
+                if (machineCapabilities[machineId]) {
+                    Object.values(machineCapabilities[machineId]).forEach(cap => {
+                        allowedItemIds.add(cap.item_id);
+                        
+                        // Add substitute items for this capable item
+                        if (itemSubstitutions[cap.item_id]) {
+                            itemSubstitutions[cap.item_id].forEach(subId => allowedItemIds.add(subId));
+                        }
+                    });
+                }
+                
+                // 2. Add capable items from machineSubstitutes[machineId] (substitute machines)
+                if (machineSubstitutes[machineId]) {
+                    machineSubstitutes[machineId].forEach(subMachineId => {
+                        if (machineCapabilities[subMachineId]) {
+                            Object.values(machineCapabilities[subMachineId]).forEach(cap => {
+                                allowedItemIds.add(cap.item_id);
+                                
+                                // Add substitute items for this capable item
+                                if (itemSubstitutions[cap.item_id]) {
+                                    itemSubstitutions[cap.item_id].forEach(subId => allowedItemIds.add(subId));
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+            
+            // Rebuild the dropdown options
+            itemSelect.innerHTML = '';
+            originalOptions.forEach(opt => {
+                const optVal = parseInt(opt.value);
+                
+                // Always keep the empty default option
+                if (!opt.value) {
+                    const clonedOpt = opt.cloneNode(true);
+                    clonedOpt.textContent = '-- Pilih Item --';
+                    itemSelect.appendChild(clonedOpt);
+                    return;
+                }
+                
+                // Filter logic
+                if (allowedItemIds === null) {
+                    // If type is INPUT or no machine selected, allow all items
+                    itemSelect.appendChild(opt.cloneNode(true));
+                } else if (allowedItemIds.has(optVal)) {
+                    // If type is OUTPUT and item is allowed
+                    itemSelect.appendChild(opt.cloneNode(true));
+                }
+            });
+            
+            // Restore selection if it's still allowed, otherwise reset
+            if (currentValue && itemSelect.querySelector(`option[value="${currentValue}"]`)) {
+                itemSelect.value = currentValue;
+            } else {
+                itemSelect.value = '';
+                const unitDisp = row.querySelector('.unit-display');
+                if (unitDisp) unitDisp.value = '';
+            }
+        });
+    }
+
+    function getStandardBatchQty(stageBlock) {
+        if (!stageBlock) return 0;
+        const itemRows = stageBlock.querySelectorAll('.item-rows > .group\\/item');
+        for (let row of itemRows) {
+            const typeSelect = row.querySelector('.stage-item-type');
+            const qtyInput = row.querySelector('input[name*="[quantity]"]');
+            if (typeSelect && typeSelect.value === 'output' && qtyInput) {
+                const val = parseFloat(qtyInput.value) || 0;
+                if (val > 0) return val;
+            }
+        }
+        return 0;
+    }
+
+    let lastEditedSource = 'target_qty';
+
+    function syncTargetQtyAndBatch(sourceInput, specificStageBlock = null) {
+        const firstProductRow = document.querySelector('.product-row');
+        if (!firstProductRow) return;
+        
+        const productQtyInput = firstProductRow.querySelector('input[name*="[quantity]"]');
+        if (!productQtyInput) return;
+        
+        if (sourceInput === productQtyInput) {
+            lastEditedSource = 'target_qty';
+            // Update batch in all stages
+            const totalQty = parseFloat(productQtyInput.value) || 0;
+            document.querySelectorAll('.stage-block').forEach(stage => {
+                const standardBatchQty = getStandardBatchQty(stage);
+                if (standardBatchQty > 0) {
+                    const batchInput = stage.querySelector('.stage-batch-input');
+                    if (batchInput) {
+                        const calculatedBatch = Math.max(0.01, Math.round((totalQty / standardBatchQty) * 100) / 100);
+                        batchInput.value = calculatedBatch;
+                    }
+                }
+            });
+        } else if (sourceInput && sourceInput.classList.contains('stage-batch-input')) {
+            lastEditedSource = 'total_batch';
+            const stage = sourceInput.closest('.stage-block');
+            const standardBatchQty = getStandardBatchQty(stage);
+            if (standardBatchQty > 0) {
+                const totalBatch = parseFloat(sourceInput.value) || 1;
+                const calculatedQty = Math.round(standardBatchQty * totalBatch * 100) / 100;
+                productQtyInput.value = calculatedQty;
+                
+                // Keep other stages in sync too!
+                document.querySelectorAll('.stage-block').forEach(otherStage => {
+                    if (otherStage !== stage) {
+                        const otherStandard = getStandardBatchQty(otherStage);
+                        if (otherStandard > 0) {
+                            const otherBatchInput = otherStage.querySelector('.stage-batch-input');
+                            if (otherBatchInput) {
+                                const calculatedBatch = Math.max(0.01, Math.round((calculatedQty / otherStandard) * 100) / 100);
+                                otherBatchInput.value = calculatedBatch;
+                            }
+                        }
+                    }
+                });
+            }
+        } else if (specificStageBlock) {
+            // Triggered when a stage item quantity changes
+            const standardBatchQty = getStandardBatchQty(specificStageBlock);
+            if (standardBatchQty > 0) {
+                const batchInput = specificStageBlock.querySelector('.stage-batch-input');
+                if (lastEditedSource === 'target_qty') {
+                    const totalQty = parseFloat(productQtyInput.value) || 0;
+                    if (batchInput) {
+                        const calculatedBatch = Math.max(0.01, Math.round((totalQty / standardBatchQty) * 100) / 100);
+                        batchInput.value = calculatedBatch;
+                    }
+                } else if (lastEditedSource === 'total_batch') {
+                    if (batchInput) {
+                        const totalBatch = parseFloat(batchInput.value) || 1;
+                        const calculatedQty = Math.round(standardBatchQty * totalBatch * 100) / 100;
+                        productQtyInput.value = calculatedQty;
+                        
+                        // Keep other stages in sync too!
+                        document.querySelectorAll('.stage-block').forEach(otherStage => {
+                            if (otherStage !== specificStageBlock) {
+                                const otherStandard = getStandardBatchQty(otherStage);
+                                if (otherStandard > 0) {
+                                    const otherBatchInput = otherStage.querySelector('.stage-batch-input');
+                                    if (otherBatchInput) {
+                                        const calculatedBatch = Math.max(0.01, Math.round((calculatedQty / otherStandard) * 100) / 100);
+                                        otherBatchInput.value = calculatedBatch;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
     }
 
     // --- Event Listeners ---
@@ -624,6 +973,12 @@
             } else {
                 addStageRow();
             }
+            // Automatically sync batch and target quantities
+            const firstProductRow = document.querySelector('.product-row');
+            if (firstProductRow) {
+                const productQtyInput = firstProductRow.querySelector('input[name*="[quantity]"]');
+                if (productQtyInput) syncTargetQtyAndBatch(productQtyInput);
+            }
             updateAllDurations(this);
         } catch (error) {
             console.error('Template Load Error:', error);
@@ -651,8 +1006,16 @@
             }
         }
 
+        // Trigger dynamic stage item filtering when machine or row type is changed!
+        if (e.target.matches('select[name*="[machine_id]"]') || e.target.matches('select[name*="[type]"]')) {
+            const stageBlock = e.target.closest('.stage-block');
+            if (stageBlock) filterStageItems(stageBlock);
+        }
+
         if (e.target.matches('select[name*="[machine_id]"]') || 
-            e.target.id === 'total_batch' || 
+            e.target.matches('select[name*="[item_id]"]') || 
+            e.target.matches('select[name*="[type]"]') || 
+            e.target.matches('.stage-batch-input') || 
             e.target.matches('input[name*="[quantity]"]') ||
             e.target.matches('.duration-hours-input') ||
             e.target.matches('.planned-start-input')) {
@@ -661,7 +1024,22 @@
     });
 
     document.addEventListener('input', function(e) {
-        if (e.target.id === 'total_batch' || 
+        // Bi-directional synchronization between Target Qty and Total Batch per stage
+        if (e.target.matches('.product-row input[name*="[quantity]"]') || e.target.matches('.stage-batch-input')) {
+            syncTargetQtyAndBatch(e.target);
+        }
+        
+        // Recalculate batch if output item quantity in stage changes
+        if (e.target.matches('input[name*="[quantity]"]') && e.target.closest('.group\\/item')) {
+            const row = e.target.closest('.group\\/item');
+            const typeSelect = row ? row.querySelector('.stage-item-type') : null;
+            if (typeSelect && typeSelect.value === 'output') {
+                const stageBlock = e.target.closest('.stage-block');
+                syncTargetQtyAndBatch(null, stageBlock);
+            }
+        }
+
+        if (e.target.matches('.stage-batch-input') || 
             e.target.matches('input[name*="[quantity]"]') || 
             e.target.name === 'duration' || 
             e.target.id === 'production_date' ||
@@ -695,6 +1073,11 @@
         if (typeof lucide !== 'undefined') lucide.createIcons();
         updateProductOptions();
         calculateFinishDate();
+        
+        // Initial filtering for any pre-loaded stages (from template/old data)
+        document.querySelectorAll('.stage-block').forEach(stageBlock => {
+            filterStageItems(stageBlock);
+        });
     });
 </script>
 @endsection
