@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class StockMutation extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'reference_no', 'work_order_id', 'from_warehouse_id', 'to_warehouse_id', 'status', 
         'note', 'rejection_reason', 'user_id', 'approved_by', 'sent_by', 'received_by',

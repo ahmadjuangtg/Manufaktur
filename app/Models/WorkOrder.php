@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class WorkOrder extends Model
 {
+    use LogsActivity;
     protected $fillable = [
         'wo_number', 'production_line', 'production_date', 'customer_id', 'marketing',
         'total_batch', 'duration', 'stage_code', 'composition_code', 'notes', 'status',

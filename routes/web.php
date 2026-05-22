@@ -108,6 +108,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/accounts', [SecurityController::class, 'storeAccount'])->name('accounts.store');
         Route::post('/accounts/update/{id}', [SecurityController::class, 'updateAccount'])->name('accounts.update');
         Route::post('/accounts/delete/{id}', [SecurityController::class, 'destroyAccount'])->name('accounts.delete');
+
+        Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('activity_logs.index')->middleware('permission:security_log_view');
     });
 
     // ORDER MODULE

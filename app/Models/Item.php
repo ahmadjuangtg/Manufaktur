@@ -4,7 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\LogsActivity;
+
 class Item extends Model {
+    use LogsActivity;
     protected $fillable = [
         'barcode', 'code', 'name', 'display_name', 'category_id', 'type_id', 
         'manufacturer_id', 'unit_id', 'package_qty', 'package_type', 

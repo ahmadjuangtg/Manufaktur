@@ -390,7 +390,8 @@
                                         Auth::user()->hasPermission('logistics_tracking_view');
 
                 $hasSecurityPermission = Auth::user()->hasPermission('security_role_view') || 
-                                       Auth::user()->hasPermission('security_account_view');
+                                       Auth::user()->hasPermission('security_account_view') ||
+                                       Auth::user()->hasPermission('security_log_view');
             @endphp
 
             @if($hasMasterPermission)
@@ -682,6 +683,11 @@
                         @if(Auth::user()->hasPermission('security_account_view'))
                         <a href="{{ route('accounts.index') }}" class="sidebar-item {{ Request::is('security/accounts*') ? 'active' : '' }} flex items-center gap-3 py-3 px-4 rounded-xl text-sm">
                             <i data-lucide="users" class="w-4 h-4 shrink-0"></i> <span class="sidebar-item-text">Account Management</span>
+                        </a>
+                        @endif
+                        @if(Auth::user()->hasPermission('security_log_view'))
+                        <a href="{{ route('activity_logs.index') }}" class="sidebar-item {{ Request::is('security/activity-logs*') ? 'active' : '' }} flex items-center gap-3 py-3 px-4 rounded-xl text-sm">
+                            <i data-lucide="scroll" class="w-4 h-4 shrink-0"></i> <span class="sidebar-item-text">Activity Logs</span>
                         </a>
                         @endif
                     </div>
