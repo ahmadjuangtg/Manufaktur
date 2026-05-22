@@ -156,14 +156,30 @@ class LogisticsController extends Controller
         if ($status == 'ON_DELIVERY') {
             $updateData['departure_at'] = now();
 
+            // Find Finished Goods Warehouse
+            $fgWh = \App\Models\Warehouse::where('name', 'like', '%Barang Jadi%')->first();
+            $warehouseId = $fgWh ? $fgWh->id : 1; // Fallback to ID 1
+            $warehouseName = $fgWh ? $fgWh->name : 'Gudang Barang Jadi';
+
+            // Validate stock availability for all items in the batch
+            foreach ($batch->packingLists as $pl) {
+                foreach ($pl->details as $detail) {
+                    $stock = \App\Models\InventoryStock::where('item_id', $detail->item_id)
+                        ->where('warehouse_id', $warehouseId)
+                        ->first();
+                    
+                    $available = $stock ? $stock->current_stock : 0;
+                    if ($available < $detail->quantity) {
+                        $itemName = $detail->item->name ?? 'Barang';
+                        return redirect()->back()->with('error', "Stok fisik di {$warehouseName} tidak mencukupi untuk {$itemName}. Tersedia: {$available}, Diminta: {$detail->quantity}. Silakan lakukan NPB/PHP/Mutasi Gudang terlebih dahulu.");
+                    }
+                }
+            }
+
             // REDUCE STOCK FROM FG WAREHOUSE
-            DB::transaction(function() use ($batch) {
+            DB::transaction(function() use ($batch, $warehouseId) {
                 foreach ($batch->packingLists as $pl) {
                     foreach ($pl->details as $detail) {
-                        // Find Finished Goods Warehouse
-                        $fgWh = \App\Models\Warehouse::where('name', 'like', '%Barang Jadi%')->first();
-                        $warehouseId = $fgWh ? $fgWh->id : 1; // Fallback to ID 1
-
                         \App\Models\StockTransaction::create([
                             'item_id' => $detail->item_id,
                             'warehouse_id' => $warehouseId,
