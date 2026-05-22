@@ -163,9 +163,13 @@ class InventoryService
                     throw new \Exception("Item ID {$itemId} tidak ada dalam dokumen permintaan mutasi.");
                 }
 
-                // Check sisa kekurangan yang bisa dikirim
-                $alreadySent = $mutation->deliveries->where('item_id', $itemId)->sum('quantity');
-                $maxPossible = $detail->quantity - $alreadySent;
+                // Check sisa kekurangan yang bisa dikirim (requested - successfully received - in transit)
+                $itemDeliveries = $mutation->deliveries->where('item_id', $itemId);
+                $totalReceived = $itemDeliveries->whereNotNull('received_at')->sum('received_quantity');
+                $inTransit = $itemDeliveries->whereNull('received_at')->sum('quantity');
+                $alreadyAccountedFor = $totalReceived + $inTransit;
+                $maxPossible = $detail->quantity - $alreadyAccountedFor;
+                $maxPossible = $maxPossible < 0 ? 0 : $maxPossible;
 
                 if ($quantity > $maxPossible) {
                     throw new \Exception("Jumlah kirim ({$quantity}) melebihi sisa kekurangan yang ada ({$maxPossible}).");
@@ -307,8 +311,8 @@ class InventoryService
             }
 
             // Complete the stock mutation if all shipments in transit are received
-            // and either the requested quantity is fully met or we have sent the complete requested quantity
-            if (!$hasInTransit && ($allReceivedSatisfied || $allSentSatisfied)) {
+            // and the requested quantity is fully met
+            if (!$hasInTransit && $allReceivedSatisfied) {
                 $mutation->update([
                     'status' => 'COMPLETED',
                     'received_by' => Auth::id(),

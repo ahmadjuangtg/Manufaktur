@@ -72,10 +72,10 @@
                             }
 
                             $totalDelivered = $deliveries->sum('quantity');
-                            $shortage = $m->status === 'COMPLETED' ? 0 : ($d->quantity - $totalDelivered);
+                            $totalReceived = ($m->status === 'COMPLETED' && $deliveries->isEmpty()) ? $d->quantity : $deliveries->sum('received_quantity');
+                            $shortage = $d->quantity - $totalReceived;
                             $shortage = $shortage < 0 ? 0 : $shortage;
                             
-                            $totalReceived = ($m->status === 'COMPLETED' && $deliveries->isEmpty()) ? $d->quantity : $deliveries->sum('received_quantity');
                             $rowStatus = ($m->status === 'COMPLETED' || $totalReceived >= $d->quantity) ? 'DONE' : 'PENDING';
                         @endphp
                         <tr class="hover:bg-white/5 transition-colors text-xs">

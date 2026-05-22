@@ -329,7 +329,7 @@
                     const itemDeliveries = (data.deliveries || []).filter(del => del.item_id === d.item_id);
                     const totalShipped = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.quantity || 0), 0);
                     const totalReceived = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.received_quantity || 0), 0);
-                    const rem = Math.max(0, parseFloat(d.quantity) - totalShipped);
+                    const rem = Math.max(0, parseFloat(d.quantity) - totalReceived);
 
                     detItems.innerHTML += `
                         <div class="p-4 bg-slate-800/20 rounded-xl border border-white/5 space-y-3">
@@ -408,8 +408,9 @@
                 
                 data.details.forEach((d, index) => {
                     const itemDeliveries = (data.deliveries || []).filter(del => del.item_id === d.item_id);
-                    const totalShipped = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.quantity || 0), 0);
-                    const rem = Math.max(0, parseFloat(d.quantity) - totalShipped);
+                    const totalReceived = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.received_quantity || 0), 0);
+                    const inTransit = itemDeliveries.filter(del => !del.received_at).reduce((sum, del) => sum + parseFloat(del.quantity || 0), 0);
+                    const rem = Math.max(0, parseFloat(d.quantity) - totalReceived - inTransit);
                     
                     const itemName = d.item?.name || 'Item';
                     const itemCode = d.item?.code || '';
