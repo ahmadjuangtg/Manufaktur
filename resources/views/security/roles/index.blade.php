@@ -85,84 +85,157 @@
                         <div class="w-1 h-6 bg-indigo-500 rounded-full"></div>
                         <h4 class="text-xs font-black text-white uppercase tracking-[0.3em]">Permission Matrix</h4>
                     </div>
-                    
-                    <div class="glass-card rounded-[2rem] overflow-hidden border border-white/5">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-800/80 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                                    <th class="px-8 py-5 border-b border-white/5">Module System</th>
-                                    <th class="px-6 py-5 border-b border-white/5 text-center">Akses Modul</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-white/5 bg-slate-900/10">
-                                @php
-                                    $modules = [
-                                        ['id' => 'dashboard', 'label' => 'Dashboard System'],
-                                        
-                                        // Master Data
-                                        ['id' => 'master_item', 'label' => 'Master Item'],
-                                        ['id' => 'master_category', 'label' => 'Master Kategori'],
-                                        ['id' => 'master_type', 'label' => 'Master Tipe Item'],
-                                        ['id' => 'master_manufacturer', 'label' => 'Master Manufaktur'],
-                                        ['id' => 'master_unit', 'label' => 'Master Satuan'],
-                                        ['id' => 'master_customer', 'label' => 'Master Customer'],
-                                        ['id' => 'master_machine_category', 'label' => 'Master Kategori Mesin'],
-                                        ['id' => 'master_machine', 'label' => 'Master Mesin'],
-                                        ['id' => 'master_warehouse', 'label' => 'Master Gudang'],
-                                        ['id' => 'master_supplier', 'label' => 'Master Supplier'],
-                                        ['id' => 'master_priority', 'label' => 'Master Prioritas'],
-                                        ['id' => 'master_substitution', 'label' => 'Master Substitusi & Capability'],
-                                        ['id' => 'master_price_list', 'label' => 'Master Price List'],
 
-                                        // Production
-                                        ['id' => 'production_template', 'label' => 'Production Template'],
-                                        ['id' => 'production_wo', 'label' => 'Work Orders'],
-                                        ['id' => 'production_scheduling', 'label' => 'Scheduling Production'],
-                                        ['id' => 'shop_floor', 'label' => 'Shop Floor Control'],
-                                        ['id' => 'production_report', 'label' => 'Laporan Hasil Produksi (LHP)'],
-                                        ['id' => 'production_handover', 'label' => 'Serah Terima (NPB/PHP)'],
+                    @php
+                        $menuCards = [
+                            [
+                                'id' => 'dashboard',
+                                'title' => 'Dashboard System',
+                                'icon' => 'layout-dashboard',
+                                'submenus' => [
+                                    ['id' => 'dashboard', 'label' => 'Dashboard System'],
+                                ]
+                            ],
+                            [
+                                'id' => 'master_data',
+                                'title' => 'Master Data',
+                                'icon' => 'database',
+                                'submenus' => [
+                                    ['id' => 'master_item', 'label' => 'Master Item'],
+                                    ['id' => 'master_category', 'label' => 'Master Kategori'],
+                                    ['id' => 'master_type', 'label' => 'Master Tipe Item'],
+                                    ['id' => 'master_manufacturer', 'label' => 'Master Manufaktur'],
+                                    ['id' => 'master_unit', 'label' => 'Master Satuan'],
+                                    ['id' => 'master_customer', 'label' => 'Master Customer'],
+                                    ['id' => 'master_machine_category', 'label' => 'Master Kategori Mesin'],
+                                    ['id' => 'master_machine', 'label' => 'Master Mesin'],
+                                    ['id' => 'master_warehouse', 'label' => 'Master Gudang'],
+                                    ['id' => 'master_supplier', 'label' => 'Master Supplier'],
+                                    ['id' => 'master_priority', 'label' => 'Master Prioritas'],
+                                    ['id' => 'master_substitution', 'label' => 'Master Substitusi & Capability'],
+                                    ['id' => 'master_price_list', 'label' => 'Master Price List'],
+                                ]
+                            ],
+                            [
+                                'id' => 'production',
+                                'title' => 'Production',
+                                'icon' => 'wrench',
+                                'submenus' => [
+                                    ['id' => 'production_template', 'label' => 'Production Template'],
+                                    ['id' => 'production_wo', 'label' => 'Work Orders'],
+                                    ['id' => 'production_scheduling', 'label' => 'Scheduling Production'],
+                                ]
+                            ],
+                            [
+                                'id' => 'shop_floor_laporan',
+                                'title' => 'Shop Floor & Laporan',
+                                'icon' => 'file-text',
+                                'submenus' => [
+                                    ['id' => 'shop_floor', 'label' => 'Shop Floor Control'],
+                                    ['id' => 'production_report', 'label' => 'Laporan Hasil Produksi (LHP)'],
+                                    ['id' => 'production_handover', 'label' => 'Serah Terima (NPB/PHP)'],
+                                ]
+                            ],
+                            [
+                                'id' => 'transaksi',
+                                'title' => 'Transaksi',
+                                'icon' => 'arrow-left-right',
+                                'submenus' => [
+                                    ['id' => 'inventory', 'label' => 'Inventory Terminal'],
+                                    ['id' => 'stock_mutation', 'label' => 'Request Mutasi Gudang'],
+                                    ['id' => 'stock_mutation_approval', 'label' => 'Approval Mutasi Gudang'],
+                                    ['id' => 'stock_opname', 'label' => 'Stock Opname'],
+                                    ['id' => 'stock_opname_approval', 'label' => 'Approval Stock Opname'],
+                                    ['id' => 'stock_card', 'label' => 'Kartu Stock'],
+                                ]
+                            ],
+                            [
+                                'id' => 'order_purchasing',
+                                'title' => 'Order & Purchasing',
+                                'icon' => 'shopping-cart',
+                                'submenus' => [
+                                    ['id' => 'order_request', 'label' => 'Purchase Request'],
+                                    ['id' => 'order_approval', 'label' => 'Approval Request PO'],
+                                    ['id' => 'order_po', 'label' => 'Purchase Orders'],
+                                    ['id' => 'order_receive', 'label' => 'Incoming Material'],
+                                ]
+                            ],
+                            [
+                                'id' => 'logistics_delivery',
+                                'title' => 'Logistik & Delivery',
+                                'icon' => 'truck',
+                                'submenus' => [
+                                    ['id' => 'logistics_packing', 'label' => 'Packing List'],
+                                    ['id' => 'logistics_delivery', 'label' => 'Delivery Batch'],
+                                    ['id' => 'logistics_tracking', 'label' => 'Tracking Delivery'],
+                                ]
+                            ],
+                            [
+                                'id' => 'security',
+                                'title' => 'Security',
+                                'icon' => 'shield-check',
+                                'submenus' => [
+                                    ['id' => 'security_role', 'label' => 'Security Roles'],
+                                    ['id' => 'security_account', 'label' => 'Account Management'],
+                                ]
+                            ]
+                        ];
+                    @endphp
 
-                                        // Transactional
-                                        ['id' => 'inventory', 'label' => 'Inventory Terminal'],
-                                        ['id' => 'stock_mutation', 'label' => 'Request Mutasi Gudang'],
-                                        ['id' => 'stock_mutation_approval', 'label' => 'Approval Mutasi Gudang'],
-                                        ['id' => 'stock_opname', 'label' => 'Stock Opname'],
-                                        ['id' => 'stock_opname_approval', 'label' => 'Approval Stock Opname'],
-                                        ['id' => 'stock_card', 'label' => 'Kartu Stock'],
+                    <!-- Control Banner -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/30 p-6 rounded-[2rem] border border-white/5">
+                        <div class="flex items-center gap-4">
+                            <div class="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400">
+                                <i data-lucide="shield-check" class="w-6 h-6 animate-pulse"></i>
+                            </div>
+                            <div>
+                                <h5 class="text-sm font-black text-white uppercase tracking-wider">Otorisasi Hak Akses</h5>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span id="checkedCountBadge" class="text-xs font-black text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">0/35 DIPILIH</span>
+                                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Dikonfigurasi Real-time</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="selectAllPermissions()" class="px-5 py-2.5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all text-xs font-black tracking-widest uppercase">
+                                PILIH SEMUA
+                            </button>
+                            <button type="button" onclick="resetPermissions()" class="px-5 py-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all text-xs font-black tracking-widest uppercase">
+                                RESET
+                            </button>
+                        </div>
+                    </div>
 
-                                        // Purchasing
-                                        ['id' => 'order_request', 'label' => 'Purchase Request'],
-                                        ['id' => 'order_approval', 'label' => 'Approval Request PO'],
-                                        ['id' => 'order_po', 'label' => 'Purchase Orders'],
-                                        ['id' => 'order_receive', 'label' => 'Incoming Material'],
-
-                                        // Logistics
-                                        ['id' => 'logistics_packing', 'label' => 'Packing List'],
-                                        ['id' => 'logistics_delivery', 'label' => 'Delivery Batch'],
-                                        ['id' => 'logistics_tracking', 'label' => 'Tracking Delivery'],
-
-                                        // Security
-                                        ['id' => 'security_role', 'label' => 'Security Roles'],
-                                        ['id' => 'security_account', 'label' => 'Account Management'],
-                                    ];
-                                @endphp
-                                @foreach($modules as $module)
-                                <tr class="hover:bg-indigo-500/5 transition-colors group">
-                                    <td class="px-8 py-4">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-2 h-2 rounded-full bg-slate-700 group-hover:bg-indigo-500 transition-colors"></div>
-                                            <span class="text-sm font-bold text-slate-300 group-hover:text-white transition-colors">{{ $module['label'] }}</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-center">
-                                        <label class="inline-flex items-center justify-center p-2 rounded-xl hover:bg-slate-800 cursor-pointer transition-all">
-                                            <input type="checkbox" name="permissions[]" value="{{ $module['id'] }}_view" class="perm-checkbox w-6 h-6 rounded-lg border-white/10 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900">
-                                        </label>
-                                    </td>
-                                </tr>
+                    <!-- Cards Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        @foreach($menuCards as $card)
+                        <div class="glass-card p-6 rounded-3xl border border-white/5 bg-[#111827]/40 space-y-4 flex flex-col justify-between" id="card_{{ $card['id'] }}">
+                            <div class="flex justify-between items-center pb-3 border-b border-white/5">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-400">
+                                        <i data-lucide="{{ $card['icon'] }}" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-sm font-black text-white tracking-tight">{{ $card['title'] }}</h5>
+                                        <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mt-0.5">{{ count($card['submenus']) }} Sub Menu</span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="toggleCardPermissions('{{ $card['id'] }}')" class="px-3 py-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all text-[9px] font-black tracking-widest uppercase">
+                                    Toggle
+                                </button>
+                            </div>
+                            <div class="space-y-2 mt-3 flex-1">
+                                @foreach($card['submenus'] as $sub)
+                                <div class="flex justify-between items-center p-3 rounded-2xl bg-[#0f172a]/40 border border-white/5 hover:bg-[#0f172a]/80 hover:border-indigo-500/30 transition-all group">
+                                    <span class="text-xs text-slate-300 group-hover:text-white font-semibold transition-colors">{{ $sub['label'] }}</span>
+                                    <label class="inline-flex items-center justify-center p-1 cursor-pointer transition-all">
+                                        <input type="checkbox" name="permissions[]" value="{{ $sub['id'] }}_view" data-card="{{ $card['id'] }}" class="perm-checkbox w-5 h-5 rounded border-white/10 bg-slate-800 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-slate-900 transition-all">
+                                    </label>
+                                </div>
                                 @endforeach
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
                 </div>
             </form>
@@ -178,12 +251,48 @@
 </div>
 
 <script>
+    function updateCheckedCount() {
+        const total = document.querySelectorAll('.perm-checkbox').length;
+        const checked = document.querySelectorAll('.perm-checkbox:checked').length;
+        const badge = document.getElementById('checkedCountBadge');
+        if (badge) {
+            badge.innerText = checked + '/' + total + ' DIPILIH';
+        }
+    }
+
+    // Monitor changes to update count live
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('perm-checkbox')) {
+            updateCheckedCount();
+        }
+    });
+
+    function selectAllPermissions() {
+        document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
+        updateCheckedCount();
+    }
+
+    function resetPermissions() {
+        document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+        updateCheckedCount();
+    }
+
+    function toggleCardPermissions(cardId) {
+        const checkboxes = document.querySelectorAll(`.perm-checkbox[data-card="${cardId}"]`);
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => {
+            cb.checked = !allChecked;
+        });
+        updateCheckedCount();
+    }
+
     function openCreateModal() {
         document.getElementById('modalTitle').innerText = 'Create New Role';
         document.getElementById('roleForm').action = "{{ route('roles.store') }}";
         document.getElementById('role_id').value = '';
         document.getElementById('role_name').value = '';
         document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+        updateCheckedCount();
         document.getElementById('modal').classList.remove('hidden');
     }
 
@@ -198,6 +307,7 @@
             cb.checked = perms.includes(cb.value);
         });
         
+        updateCheckedCount();
         document.getElementById('modal').classList.remove('hidden');
     }
 

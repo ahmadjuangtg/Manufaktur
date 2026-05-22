@@ -190,7 +190,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/stock-opname/get-stock', [TransactionController::class, 'getStock'])->name('opname.get_stock');
 
         Route::get('/stock-card', [TransactionController::class, 'indexStockCard'])->name('stock_card.index')->middleware('permission:stock_card_view');
+        Route::get('/stock-card/print-all', [TransactionController::class, 'printAllStockCards'])->name('stock_card.print_all')->middleware('permission:stock_card_view');
+        Route::get('/stock-card/export-excel', [TransactionController::class, 'exportExcelStockCard'])->name('stock_card.export_excel')->middleware('permission:stock_card_view');
         Route::get('/stock-card/print/{id}', [TransactionController::class, 'printStockCard'])->name('stock_card.print')->middleware('permission:stock_card_view');
+        Route::get('/stock-card/export-excel-single/{id}', [TransactionController::class, 'exportExcelSingleStockCard'])->name('stock_card.export_excel_single')->middleware('permission:stock_card_view');
 
         // Mutation Routes
         Route::prefix('mutations')->group(function () {
@@ -210,6 +213,7 @@ Route::middleware(['auth'])->group(function () {
             // Rekap PM & Realisasi Cicilan
             Route::get('/rekap', [\App\Http\Controllers\StockMutationController::class, 'indexRekap'])->name('mutations.rekap.index');
             Route::post('/deliver-partial/{id}', [\App\Http\Controllers\StockMutationController::class, 'deliverPartial'])->name('mutations.deliver_partial');
+            Route::post('/receive-partial/{id}', [\App\Http\Controllers\StockMutationController::class, 'receivePartial'])->name('mutations.receive_partial');
         });
     });
 

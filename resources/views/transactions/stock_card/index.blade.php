@@ -2,10 +2,18 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
             <h3 class="text-xl font-bold text-white uppercase tracking-tight">Kartu Stok (Stock Card)</h3>
             <p class="text-slate-400 text-sm italic">Lacak riwayat masuk dan keluar barang secara mendetail</p>
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <a href="{{ route('stock_card.export_excel', ['warehouse_id' => $warehouse_id, 'search' => $search]) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Export Excel
+            </a>
+            <a href="{{ route('stock_card.print_all', ['warehouse_id' => $warehouse_id, 'search' => $search]) }}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg">
+                <i data-lucide="printer" class="w-4 h-4"></i> Cetak Laporan
+            </a>
         </div>
     </div>
 
@@ -27,16 +35,27 @@
 
     <!-- Search and Filter -->
     <div class="glass-card p-6 rounded-3xl border border-white/5 bg-slate-800/20 mb-8">
-        <form action="{{ route('stock_card.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center">
+        <form action="{{ route('stock_card.index') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-center w-full">
             <div class="relative flex-1 w-full">
                 <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
                 <input type="text" name="search" value="{{ $search }}" placeholder="Cari SKU atau Nama Produk..." class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-3.5 pl-12 pr-6 text-white text-sm font-bold outline-none focus:border-indigo-500 transition-all shadow-inner">
             </div>
+            
+            <div class="relative w-full md:w-64">
+                <select name="warehouse_id" onchange="this.form.submit()" class="w-full bg-[#0f172a] border border-white/10 rounded-2xl py-3.5 pl-6 pr-10 text-white text-sm font-bold outline-none focus:border-indigo-500 transition-all shadow-inner appearance-none cursor-pointer">
+                    <option value="">Semua Gudang</option>
+                    @foreach($warehouses as $w)
+                        <option value="{{ $w->id }}" {{ $warehouse_id == $w->id ? 'selected' : '' }}>{{ $w->name }}</option>
+                    @endforeach
+                </select>
+                <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+            </div>
+
             <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-500/20 transition-all active:scale-95 w-full md:w-auto">
                 Cari Produk
             </button>
-            @if($search)
-                <a href="{{ route('stock_card.index') }}" class="text-slate-500 hover:text-white text-sm font-bold px-4">Reset</a>
+            @if($search || $warehouse_id)
+                <a href="{{ route('stock_card.index') }}" class="text-slate-500 hover:text-white text-sm font-bold px-4 whitespace-nowrap">Reset</a>
             @endif
         </form>
     </div>
@@ -94,6 +113,12 @@
                 @endforelse
             </tbody>
         </table>
+        
+        @if($items->hasPages())
+        <div class="px-8 py-4 bg-slate-800/30 border-t border-white/5">
+            {{ $items->links() }}
+        </div>
+        @endif
     </div>
 </div>
 @endsection

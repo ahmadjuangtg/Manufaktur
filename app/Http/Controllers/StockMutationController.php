@@ -165,7 +165,16 @@ class StockMutationController extends Controller
         $to_warehouse_id = $request->to_warehouse_id;
         $status = $request->status;
 
-        $data = StockMutation::with(['fromWarehouse', 'toWarehouse', 'user', 'workOrder'])
+        $data = StockMutation::with([
+            'fromWarehouse', 
+            'toWarehouse', 
+            'user', 
+            'workOrder', 
+            'details.item.unit', 
+            'deliveries.item.unit', 
+            'deliveries.sender', 
+            'deliveries.receiver'
+        ])
             ->when($from_warehouse_id, function($q) use ($from_warehouse_id) {
                 $q->where('from_warehouse_id', $from_warehouse_id);
             })
@@ -187,15 +196,33 @@ class StockMutationController extends Controller
 
     public function show($id)
     {
-        $mutation = StockMutation::with(['fromWarehouse', 'toWarehouse', 'user', 'workOrder', 'details.item.unit'])
-            ->findOrFail($id);
+        $mutation = StockMutation::with([
+            'fromWarehouse', 
+            'toWarehouse', 
+            'user', 
+            'workOrder', 
+            'details.item.unit', 
+            'deliveries.item.unit', 
+            'deliveries.sender', 
+            'deliveries.receiver'
+        ])->findOrFail($id);
         return response()->json($mutation);
     }
 
     public function print($id)
     {
-        $mutation = StockMutation::with(['fromWarehouse', 'toWarehouse', 'user', 'approver', 'sender', 'receiver', 'details.item.unit'])
-            ->findOrFail($id);
+        $mutation = StockMutation::with([
+            'fromWarehouse', 
+            'toWarehouse', 
+            'user', 
+            'approver', 
+            'sender', 
+            'receiver', 
+            'details.item.unit',
+            'deliveries.item.unit', 
+            'deliveries.sender', 
+            'deliveries.receiver'
+        ])->findOrFail($id);
         return view('transactions.mutations.print', compact('mutation'));
     }
 
@@ -250,8 +277,37 @@ class StockMutationController extends Controller
 
         try {
             $this->inventoryService->deliverPartialMutation($id, $request->items);
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Pengiriman cicilan berhasil dicatat.']);
+            }
             return redirect()->back()->with('success', 'Pengiriman cicilan berhasil dicatat.');
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    public function receivePartial(Request $request, $id)
+    {
+        $request->validate([
+            'shipment_no' => 'required|string',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.quantity' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $this->inventoryService->receivePartialMutation($id, $request->shipment_no, $request->items);
+            if ($request->ajax()) {
+                return response()->json(['success' => true, 'message' => 'Penerimaan fisik berhasil dicatat.']);
+            }
+            return redirect()->back()->with('success', 'Penerimaan fisik berhasil dicatat.');
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
             return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
         }
     }

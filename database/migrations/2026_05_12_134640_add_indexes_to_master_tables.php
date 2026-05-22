@@ -18,10 +18,10 @@ return new class extends Migration
         Schema::table('manufacturers', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
         Schema::table('units', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
         Schema::table('items', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
-        Schema::table('warehouses', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
+        Schema::table('warehouses', function (Blueprint $table) { $table->index('name'); });
         Schema::table('machines', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
         Schema::table('machine_categories', function (Blueprint $table) { $table->index('name'); });
-        Schema::table('customers', function (Blueprint $table) { $table->index('name'); $table->index('code'); });
+        Schema::table('customers', function (Blueprint $table) { $table->index('name'); });
     }
 
     /**
@@ -35,9 +35,9 @@ return new class extends Migration
         Schema::table('manufacturers', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
         Schema::table('units', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
         Schema::table('items', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
-        Schema::table('warehouses', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
+        Schema::table('warehouses', function (Blueprint $table) { $table->dropIndex(['name']); });
         Schema::table('machines', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
         Schema::table('machine_categories', function (Blueprint $table) { $table->dropIndex(['name']); });
-        Schema::table('customers', function (Blueprint $table) { $table->dropIndex(['name']); $table->dropIndex(['code']); });
+        Schema::table('customers', function (Blueprint $table) { $table->dropIndex(['name']); });
     }
 };

@@ -105,13 +105,19 @@
                             $userWarehouseIds = Auth::user()->warehouses->pluck('id')->toArray();
                             $canSend = $isSuper || in_array($m->from_warehouse_id, $userWarehouseIds);
                             $canReceive = $isSuper || in_array($m->to_warehouse_id, $userWarehouseIds);
+
+                            $totalRequested = $m->details->sum('quantity');
+                            $totalSent = $m->deliveries->sum('quantity');
+                            $hasRemainingToSend = $totalSent < $totalRequested;
+                            $hasShipmentsInTransit = $m->deliveries->whereNull('received_at')->isNotEmpty();
                         @endphp
-                        @if($m->status == 'APPROVED' && $canSend)
-                        <button onclick="sendMutation({{ $m->id }})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
+                        @if(($m->status == 'APPROVED' || $m->status == 'SENDING') && $hasRemainingToSend && $canSend)
+                        <button onclick="openDeliveryModal({{ $m->id }})" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
                             <i data-lucide="truck" class="w-3 h-3"></i> Kirim Barang
                         </button>
-                        @elseif($m->status == 'SENDING' && $canReceive)
-                        <button onclick="receiveMutation({{ $m->id }})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
+                        @endif
+                        @if($m->status == 'SENDING' && $hasShipmentsInTransit && $canReceive)
+                        <button onclick="openReceiveModal({{ $m->id }})" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 transition-all">
                             <i data-lucide="check" class="w-3 h-3"></i> Terima Barang
                         </button>
                         @endif
@@ -223,7 +229,90 @@
     </div>
 </div>
 
+<!-- Delivery Shipment Modal -->
+<div id="deliveryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center text-blue-400">
+                    <i data-lucide="truck" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-white tracking-tight" id="deliveryModalTitle">Kirim Bahan Baku</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Input Kuantitas Barang Dikirim</p>
+                </div>
+            </div>
+            <button onclick="closeDeliveryModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        
+        <form id="deliveryForm" onsubmit="submitDelivery(event)" class="p-8 space-y-6">
+            @csrf
+            <input type="hidden" id="deliveryMutationId" name="mutation_id">
+            
+            <div class="space-y-4">
+                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Rincian Kuantitas Pengiriman</h4>
+                <div id="deliveryItemsList" class="space-y-3 max-h-60 overflow-y-auto custom-scroll pr-2">
+                    <!-- Dynamic Item Inputs -->
+                </div>
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3 border-t border-white/5 bg-slate-800/10 -mx-8 -mb-8 p-6">
+                <button type="button" onclick="closeDeliveryModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">Batal</button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i data-lucide="send" class="w-4 h-4"></i> Simpan Pengiriman
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Receive Shipment Modal -->
+<div id="receiveModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="bg-[#1e293b] border border-white/10 w-full max-w-2xl rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div class="p-8 border-b border-white/5 flex justify-between items-center bg-slate-800/30">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-emerald-600/20 rounded-2xl flex items-center justify-center text-emerald-400">
+                    <i data-lucide="package-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-black text-white tracking-tight">Verifikasi & Terima Pengiriman</h3>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Input Fisik Barang Diterima</p>
+                </div>
+            </div>
+            <button onclick="closeReceiveModal()" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-all"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        
+        <form id="receiveForm" onsubmit="submitReceive(event)" class="p-8 space-y-6">
+            @csrf
+            <input type="hidden" id="receiveMutationId" name="mutation_id">
+            
+            <div class="space-y-2">
+                <label class="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Pilih Berkas Pengiriman</label>
+                <select id="receiveShipmentNo" name="shipment_no" onchange="renderReceiveItems()" class="w-full bg-slate-800/50 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                    <!-- Dynamic Options -->
+                </select>
+            </div>
+
+            <div class="space-y-4">
+                <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Verifikasi Fisik Item</h4>
+                <div id="receiveItemsList" class="space-y-3 max-h-60 overflow-y-auto custom-scroll pr-2">
+                    <!-- Dynamic Item Inputs -->
+                </div>
+            </div>
+
+            <div class="pt-4 flex justify-end gap-3 border-t border-white/5 bg-slate-800/10 -mx-8 -mb-8 p-6">
+                <button type="button" onclick="closeReceiveModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/5 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">Batal</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> Simpan Penerimaan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    let currentMutationData = null;
+
     function viewDetails(id) {
         fetch(`/transactions/mutations/get-details/${id}`)
             .then(res => res.json())
@@ -236,10 +325,23 @@
                 const detItems = document.getElementById('detItems');
                 detItems.innerHTML = '';
                 data.details.forEach(d => {
+                    // Filter deliveries belonging to this item
+                    const itemDeliveries = (data.deliveries || []).filter(del => del.item_id === d.item_id);
+                    const totalShipped = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.quantity || 0), 0);
+                    const totalReceived = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.received_quantity || 0), 0);
+                    const rem = Math.max(0, parseFloat(d.quantity) - totalShipped);
+
                     detItems.innerHTML += `
-                        <div class="flex justify-between items-center p-4 bg-slate-800/20 rounded-xl border border-white/5">
-                            <span class="text-xs text-white font-bold">${d.item.name}</span>
-                            <span class="text-sm font-black text-indigo-400">${parseFloat(d.quantity)} <span class="text-[9px] uppercase text-slate-600 ml-1">${d.item.unit?.name || '-'}</span></span>
+                        <div class="p-4 bg-slate-800/20 rounded-xl border border-white/5 space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs text-white font-bold">${d.item.name}</span>
+                                <span class="text-xs font-black text-indigo-400">${parseFloat(d.quantity)} <span class="text-[9px] uppercase text-slate-600 ml-0.5">${d.item.unit?.name || '-'}</span></span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[9px] text-slate-400 border-t border-white/5 pt-2 font-bold uppercase tracking-wider">
+                                <div>Kirim: <span class="text-blue-400 font-black">${totalShipped}</span></div>
+                                <div>Terima: <span class="text-emerald-400 font-black">${totalReceived}</span></div>
+                                <div class="ml-auto">Sisa: <span class="text-rose-400 font-black">${rem}</span></div>
+                            </div>
                         </div>
                     `;
                 });
@@ -292,10 +394,71 @@
         ['logApp', 'logSent', 'logRec'].forEach(id => document.getElementById(id).classList.add('opacity-30'));
     }
 
-    async function sendMutation(id) {
+    function openDeliveryModal(id) {
+        document.getElementById('deliveryMutationId').value = id;
+        
+        fetch(`/transactions/mutations/get-details/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                currentMutationData = data;
+                document.getElementById('deliveryModalTitle').innerText = 'Kirim Bahan Baku - ' + data.reference_no;
+                
+                const itemsList = document.getElementById('deliveryItemsList');
+                itemsList.innerHTML = '';
+                
+                data.details.forEach((d, index) => {
+                    const itemDeliveries = (data.deliveries || []).filter(del => del.item_id === d.item_id);
+                    const totalShipped = itemDeliveries.reduce((sum, del) => sum + parseFloat(del.quantity || 0), 0);
+                    const rem = Math.max(0, parseFloat(d.quantity) - totalShipped);
+                    
+                    const itemName = d.item?.name || 'Item';
+                    const itemCode = d.item?.code || '';
+                    const unitName = d.item?.unit?.name || 'pcs';
+                    
+                    itemsList.innerHTML += `
+                        <div class="p-4 bg-slate-800/30 rounded-2xl border border-white/5 space-y-3">
+                            <div class="flex justify-between items-center text-xs">
+                                <div>
+                                    <span class="px-2 py-0.5 bg-white/5 text-slate-400 text-[9px] font-black rounded">${itemCode}</span>
+                                    <strong class="text-white ml-2">${itemName}</strong>
+                                </div>
+                                <div class="text-slate-400 text-[10px]">
+                                    Minta: <strong>${parseFloat(d.quantity)} ${unitName}</strong> | Sisa: <strong class="text-amber-400">${rem} ${unitName}</strong>
+                                </div>
+                            </div>
+                            <input type="hidden" name="items[${index}][item_id]" value="${d.item_id}">
+                            <div class="flex items-center gap-4">
+                                <label class="text-[10px] text-slate-500 font-bold uppercase tracking-widest whitespace-nowrap">Qty Kirim Saat Ini</label>
+                                <div class="relative w-full">
+                                    <input type="number" step="0.01" min="0" max="${rem}" name="items[${index}][quantity]" value="${rem}" required class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-600 uppercase">${unitName}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('deliveryModal').classList.remove('hidden');
+                lucide.createIcons();
+            });
+    }
+
+    function closeDeliveryModal() {
+        document.getElementById('deliveryModal').classList.add('hidden');
+        document.getElementById('deliveryForm').reset();
+        currentMutationData = null;
+    }
+
+    async function submitDelivery(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('deliveryMutationId').value;
+        const form = document.getElementById('deliveryForm');
+        const formData = new FormData(form);
+
         const result = await Swal.fire({
             title: 'KONFIRMASI PENGIRIMAN',
-            text: 'Apakah Anda yakin ingin mengirim barang untuk mutasi ini?',
+            text: 'Apakah Anda yakin ingin mengirim barang dengan jumlah tersebut?',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'YA, KIRIM SEKARANG',
@@ -303,56 +466,142 @@
             confirmButtonColor: '#3b82f6'
         });
 
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch(`{{ url('transactions/mutations/send') }}/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
-                } else {
-                    throw new Error(data.message);
-                }
-            } catch (err) {
-                Swal.fire('ERROR', err.message, 'error');
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch(`/transactions/mutations/deliver-partial/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
+            } else {
+                throw new Error(data.message);
             }
+        } catch (err) {
+            Swal.fire('ERROR', err.message, 'error');
         }
     }
 
-    async function receiveMutation(id) {
+    function openReceiveModal(id) {
+        document.getElementById('receiveMutationId').value = id;
+        
+        fetch(`/transactions/mutations/get-details/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                currentMutationData = data;
+                
+                // Get unique shipment numbers where received_at is null
+                const shipmentNoSelect = document.getElementById('receiveShipmentNo');
+                shipmentNoSelect.innerHTML = '';
+                
+                const uniqueShipments = [];
+                (data.deliveries || []).forEach(d => {
+                    if (!d.received_at && d.shipment_no && !uniqueShipments.includes(d.shipment_no)) {
+                        uniqueShipments.push(d.shipment_no);
+                    }
+                });
+
+                if (uniqueShipments.length === 0) {
+                    Swal.fire('INFO', 'Tidak ada pengiriman aktif (dalam perjalanan) untuk mutasi ini.', 'info');
+                    return;
+                }
+
+                uniqueShipments.forEach(shipment => {
+                    const opt = document.createElement('option');
+                    opt.value = shipment;
+                    opt.innerText = shipment;
+                    shipmentNoSelect.appendChild(opt);
+                });
+
+                // Trigger render of items for the selected shipment
+                renderReceiveItems();
+
+                document.getElementById('receiveModal').classList.remove('hidden');
+                lucide.createIcons();
+            });
+    }
+
+    function renderReceiveItems() {
+        const shipmentNo = document.getElementById('receiveShipmentNo').value;
+        const itemsList = document.getElementById('receiveItemsList');
+        itemsList.innerHTML = '';
+
+        if (!currentMutationData || !shipmentNo) return;
+
+        // Filter deliveries belonging to this shipment
+        const deliveriesInShipment = currentMutationData.deliveries.filter(d => d.shipment_no === shipmentNo);
+
+        deliveriesInShipment.forEach((d, index) => {
+            const qtySent = parseFloat(d.quantity);
+            const itemName = d.item?.name || 'Item';
+            const unitName = d.item?.unit?.name || 'pcs';
+
+            itemsList.innerHTML += `
+                <div class="p-4 bg-slate-800/30 rounded-2xl border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <p class="text-xs text-white font-bold">${itemName}</p>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dikirim: <span class="text-slate-300 font-extrabold">${qtySent} ${unitName}</span></p>
+                    </div>
+                    <div class="w-full md:w-44 flex items-center gap-2">
+                        <input type="hidden" name="items[${index}][item_id]" value="${d.item_id}">
+                        <div class="relative w-full">
+                            <input type="number" step="0.01" min="0" max="${qtySent}" name="items[${index}][quantity]" value="${qtySent}" class="w-full bg-slate-900/50 border border-white/10 rounded-xl pl-4 pr-12 py-2.5 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" required>
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500 uppercase tracking-widest">${unitName}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function closeReceiveModal() {
+        document.getElementById('receiveModal').classList.add('hidden');
+        document.getElementById('receiveForm').reset();
+        currentMutationData = null;
+    }
+
+    async function submitReceive(event) {
+        event.preventDefault();
+        
+        const id = document.getElementById('receiveMutationId').value;
+        const form = document.getElementById('receiveForm');
+        const formData = new FormData(form);
+
         const result = await Swal.fire({
-            title: 'KONFIRMASI PENERIMAAN',
-            text: 'Apakah Anda yakin barang sudah sampai dan sesuai?',
+            title: 'KONFIRMASI PENERIMAAN FISIK',
+            text: 'Apakah Anda yakin jumlah fisik barang yang diterima sudah benar?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'YA, TERIMA BARANG',
+            confirmButtonText: 'YA, SIMPAN SEKARANG',
             cancelButtonText: 'BATAL',
             confirmButtonColor: '#10b981'
         });
 
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch(`{{ url('transactions/mutations/receive') }}/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                const data = await res.json();
-                if (data.success) {
-                    Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
-                } else {
-                    throw new Error(data.message);
-                }
-            } catch (err) {
-                Swal.fire('ERROR', err.message, 'error');
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch(`/transactions/mutations/receive-partial/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('BERHASIL', data.message, 'success').then(() => location.reload());
+            } else {
+                throw new Error(data.message);
             }
+        } catch (err) {
+            Swal.fire('ERROR', err.message, 'error');
         }
     }
 </script>

@@ -80,6 +80,53 @@
         </tbody>
     </table>
 
+    @if(count($mutation->deliveries) > 0)
+    <h3 style="font-size: 10px; text-transform: uppercase; color: #666; margin-top: 30px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Realisasi Pengiriman & Penerimaan Parsial</h3>
+    @php
+        $shipments = $mutation->deliveries->groupBy('shipment_no');
+    @endphp
+
+    @foreach($shipments as $shipmentNo => $deliveries)
+    <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px; padding: 10px; background-color: #fafafa;">
+        <div style="display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
+            <span>No. Pengiriman: <span style="font-family: monospace; color: #3b82f6;">{{ $shipmentNo }}</span></span>
+            <span style="font-size: 10px; color: #666;">
+                Kirim: {{ $deliveries->first()->delivered_at ? $deliveries->first()->delivered_at->format('d/m/Y H:i') : '-' }} ({{ $deliveries->first()->sender->name ?? '-' }})
+                @if($deliveries->first()->received_at)
+                | Terima: {{ $deliveries->first()->received_at->format('d/m/Y H:i') }} ({{ $deliveries->first()->receiver->name ?? '-' }})
+                @else
+                | <span style="color: #eab308; font-weight: bold;">DALAM PERJALANAN</span>
+                @endif
+            </span>
+        </div>
+        <table style="margin-bottom: 0;">
+            <thead>
+                <tr>
+                    <th>Kode Barang</th>
+                    <th>Nama Barang</th>
+                    <th style="text-align: right; width: 100px;">Qty Dikirim</th>
+                    <th style="text-align: right; width: 100px;">Qty Diterima (Fisik)</th>
+                    <th style="width: 60px;">Satuan</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($deliveries as $d)
+                <tr>
+                    <td style="font-family: monospace;">{{ $d->item->code }}</td>
+                    <td style="font-weight: bold;">{{ $d->item->name }}</td>
+                    <td style="text-align: right; font-weight: 900; color: #3b82f6;">{{ $d->quantity + 0 }}</td>
+                    <td style="text-align: right; font-weight: 900; color: #10b981;">
+                        {{ $d->received_at ? ($d->received_quantity + 0) : '-' }}
+                    </td>
+                    <td>{{ $d->item->unit->name ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    @endforeach
+    @endif
+
     @if($mutation->note)
     <div class="note-box">
         <strong>Catatan Mutasi:</strong>

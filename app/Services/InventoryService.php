@@ -142,6 +142,14 @@ class InventoryService
                 throw new \Exception("Hanya mutasi berstatus APPROVED atau SENDING yang dapat diproses kirim.");
             }
 
+            // Count existing unique shipments to generate the next shipment number
+            $count = \App\Models\StockMutationDelivery::where('stock_mutation_id', $mutation->id)
+                ->whereNotNull('shipment_no')
+                ->distinct()
+                ->count('shipment_no') + 1;
+
+            $shipmentNo = $mutation->reference_no . '-DEL-' . $count;
+
             // Loop items sent in this batch
             foreach ($items as $sentItem) {
                 $itemId = $sentItem['item_id'];
@@ -185,50 +193,126 @@ class InventoryService
                     'user_id' => Auth::id(),
                 ]);
 
-                // 3. Menambahkan stok fisik (IN) di gudang tujuan senilai Qty kiriman
-                StockTransaction::create([
-                    'item_id' => $itemId,
-                    'warehouse_id' => $mutation->to_warehouse_id,
-                    'type' => 'IN',
-                    'quantity' => $quantity,
-                    'reference_no' => 'MUTATION-' . $mutation->reference_no,
-                    'note' => 'Mutasi Cicilan dari ' . $mutation->fromWarehouse->name,
-                    'user_id' => Auth::id(),
-                ]);
-
-                // 4. Catat ke tabel pengiriman
+                // 3. Catat ke tabel pengiriman (Destination IN will be performed on physical receipt)
                 \App\Models\StockMutationDelivery::create([
                     'stock_mutation_id' => $mutation->id,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
                     'delivered_by' => Auth::id(),
                     'delivered_at' => now(),
+                    'shipment_no' => $shipmentNo,
                 ]);
             }
 
-            // Refresh deliveries to check if all are fully satisfied
+            // Update mutation status to SENDING as we have an active shipment in transit
+            $mutation->update([
+                'status' => 'SENDING',
+                'sent_by' => Auth::id(),
+                'sent_at' => now()
+            ]);
+
+            return $mutation;
+        });
+    }
+
+    /**
+     * Process Physical Verification and Receipt of a Partial Shipment
+     */
+    public function receivePartialMutation(int $id, string $shipmentNo, array $items)
+    {
+        return DB::transaction(function () use ($id, $shipmentNo, $items) {
+            $mutation = StockMutation::with(['details', 'deliveries', 'toWarehouse', 'fromWarehouse'])->findOrFail($id);
+
+            if ($mutation->status !== 'SENDING') {
+                throw new \Exception("Hanya mutasi berstatus SENDING yang dapat diverifikasi penerimaannya.");
+            }
+
+            // Find all deliveries for this shipment
+            $deliveries = \App\Models\StockMutationDelivery::where('stock_mutation_id', $id)
+                ->where('shipment_no', $shipmentNo)
+                ->get();
+
+            if ($deliveries->isEmpty()) {
+                throw new \Exception("Pengiriman dengan nomor {$shipmentNo} tidak ditemukan.");
+            }
+
+            if ($deliveries->first()->received_at !== null) {
+                throw new \Exception("Pengiriman dengan nomor {$shipmentNo} sudah pernah diterima sebelumnya.");
+            }
+
+            // Process receipt for each item in the shipment
+            foreach ($deliveries as $delivery) {
+                // Find received quantity in the input array
+                $receivedQty = 0;
+                foreach ($items as $item) {
+                    if ($item['item_id'] == $delivery->item_id) {
+                        $receivedQty = floatval($item['quantity']);
+                        break;
+                    }
+                }
+
+                if ($receivedQty < 0) {
+                    throw new \Exception("Jumlah diterima tidak boleh negatif.");
+                }
+
+                if ($receivedQty > $delivery->quantity) {
+                    throw new \Exception("Jumlah diterima untuk item ID {$delivery->item_id} ({$receivedQty}) tidak boleh melebihi jumlah yang dikirim ({$delivery->quantity}).");
+                }
+
+                // Update the delivery record with receipt information
+                $delivery->update([
+                    'received_quantity' => $receivedQty,
+                    'received_by' => Auth::id(),
+                    'received_at' => now(),
+                ]);
+
+                // Create IN transaction in the destination warehouse if received quantity > 0
+                if ($receivedQty > 0) {
+                    StockTransaction::create([
+                        'item_id' => $delivery->item_id,
+                        'warehouse_id' => $mutation->to_warehouse_id,
+                        'type' => 'IN',
+                        'quantity' => $receivedQty,
+                        'reference_no' => 'MUTATION-' . $mutation->reference_no,
+                        'note' => 'Penerimaan Fisik Mutasi (' . $shipmentNo . ') dari ' . $mutation->fromWarehouse->name,
+                        'user_id' => Auth::id(),
+                    ]);
+                }
+            }
+
+            // Refresh deliveries to evaluate status of the mutation
             $mutation->load('deliveries');
 
-            $allCompleted = true;
+            // Check if there are any outstanding shipments in transit
+            $hasInTransit = $mutation->deliveries->whereNull('received_at')->isNotEmpty();
+
+            // Check if all requested items are fully sent
+            $allSentSatisfied = true;
             foreach ($mutation->details as $detail) {
-                $totalDelivered = $mutation->deliveries->where('item_id', $detail->item_id)->sum('quantity');
-                if ($totalDelivered < $detail->quantity) {
-                    $allCompleted = false;
+                $totalSent = $mutation->deliveries->where('item_id', $detail->item_id)->sum('quantity');
+                if ($totalSent < $detail->quantity) {
+                    $allSentSatisfied = false;
                     break;
                 }
             }
 
-            if ($allCompleted) {
+            // Check if all requested items are fully received
+            $allReceivedSatisfied = true;
+            foreach ($mutation->details as $detail) {
+                $totalReceived = $mutation->deliveries->where('item_id', $detail->item_id)->sum('received_quantity');
+                if ($totalReceived < $detail->quantity) {
+                    $allReceivedSatisfied = false;
+                    break;
+                }
+            }
+
+            // Complete the stock mutation if all shipments in transit are received
+            // and either the requested quantity is fully met or we have sent the complete requested quantity
+            if (!$hasInTransit && ($allReceivedSatisfied || $allSentSatisfied)) {
                 $mutation->update([
                     'status' => 'COMPLETED',
                     'received_by' => Auth::id(),
                     'received_at' => now()
-                ]);
-            } else {
-                $mutation->update([
-                    'status' => 'SENDING',
-                    'sent_by' => Auth::id(),
-                    'sent_at' => now()
                 ]);
             }
 

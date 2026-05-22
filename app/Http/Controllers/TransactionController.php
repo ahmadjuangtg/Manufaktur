@@ -252,13 +252,21 @@ class TransactionController extends Controller
 
         if ($item_id) {
             $item = Item::with('unit')->findOrFail($item_id);
-            $transactions = StockTransaction::where('item_id', $item_id)
-                ->with('warehouse')
-                ->latest()
-                ->paginate(10)
-                ->withQueryString();
+            $warehouse_id = $request->warehouse_id;
+
+            // Filter transactions by warehouse if selected
+            $transactions_query = StockTransaction::where('item_id', $item_id)->with('warehouse');
+            if ($warehouse_id) {
+                $transactions_query->where('warehouse_id', $warehouse_id);
+            }
+            $transactions = $transactions_query->latest()->paginate(10)->withQueryString();
             
-            $stock_data = InventoryStock::where('item_id', $item_id)
+            // Calculate summary stock
+            $stock_query = InventoryStock::where('item_id', $item_id);
+            if ($warehouse_id) {
+                $stock_query->where('warehouse_id', $warehouse_id);
+            }
+            $stock_data = $stock_query
                 ->selectRaw('SUM(current_stock) as current_stock, SUM(lock_stock) as lock_stock, SUM(shadow_stock) as shadow_stock')
                 ->first();
                 
@@ -267,50 +275,116 @@ class TransactionController extends Controller
             $shadow_stock = $stock_data->shadow_stock ?? 0;
             $available_stock = max(0, $current_stock - $lock_stock);
 
+            // Get total warehouses count
+            $warehouse_count = Warehouse::count();
+
+            // Stock per warehouse grid always shows all warehouses
             $warehouse_stock = InventoryStock::where('item_id', $item_id)
                 ->join('warehouses', 'inventory_stocks.warehouse_id', '=', 'warehouses.id')
-                ->select('warehouses.name', 'inventory_stocks.current_stock as total', 'inventory_stocks.lock_stock', 'inventory_stocks.shadow_stock')
+                ->select('warehouses.id as warehouse_id', 'warehouses.name', 'inventory_stocks.current_stock as total', 'inventory_stocks.lock_stock', 'inventory_stocks.shadow_stock')
                 ->get();
 
-            return view('transactions.stock_card.detail', compact('item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock', 'warehouse_stock'));
+            // Get permitted warehouses for the dropdown
+            $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+            $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
+
+            // Calculate starting balance based on filtered transactions
+            $starting_balance = 0;
+            if ($transactions->isNotEmpty()) {
+                $oldest = $transactions->last();
+                $starting_balance_query = StockTransaction::where('item_id', $item_id);
+                if ($warehouse_id) {
+                    $starting_balance_query->where('warehouse_id', $warehouse_id);
+                }
+                $starting_balance = $starting_balance_query
+                    ->where(function($query) use ($oldest) {
+                        $query->where('created_at', '<', $oldest->created_at)
+                              ->orWhere(function($q) use ($oldest) {
+                                  $q->where('created_at', '=', $oldest->created_at)
+                                    ->where('id', '<', $oldest->id);
+                              });
+                    })
+                    ->selectRaw("SUM(CASE WHEN type = 'IN' THEN quantity WHEN type = 'OUT' THEN -quantity ELSE 0 END) as balance")
+                    ->value('balance') ?? 0;
+            }
+
+            return view('transactions.stock_card.detail', compact(
+                'item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock', 
+                'warehouse_stock', 'starting_balance', 'warehouses', 'warehouse_id', 'warehouse_count'
+            ));
         }
 
-        // Optimized to join inventory_stocks
+        $warehouse_id = $request->warehouse_id;
+
+        $subquery_current = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(current_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_lock = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(lock_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_shadow = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(shadow_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        if ($warehouse_id) {
+            $subquery_current->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_lock->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_shadow->where('inventory_stocks.warehouse_id', $warehouse_id);
+        }
+
         $items = Item::with(['unit', 'category'])
-            ->leftJoin('inventory_stocks', 'items.id', '=', 'inventory_stocks.item_id')
             ->select('items.*')
-            ->selectRaw("SUM(inventory_stocks.current_stock) as current_stock")
-            ->selectRaw("SUM(inventory_stocks.lock_stock) as lock_stock")
-            ->selectRaw("SUM(inventory_stocks.shadow_stock) as shadow_stock")
+            ->selectSub($subquery_current, 'current_stock')
+            ->selectSub($subquery_lock, 'lock_stock')
+            ->selectSub($subquery_shadow, 'shadow_stock')
             ->when($search, function($q) use ($search) {
-                $q->where('items.name', 'like', "%{$search}%")
-                  ->orWhere('items.code', 'like', "%{$search}%");
+                $q->where(function($inner) use ($search) {
+                    $inner->where('items.name', 'like', "%{$search}%")
+                          ->orWhere('items.code', 'like', "%{$search}%");
+                });
             })
-            ->groupBy('items.id')
             ->paginate(10)
             ->withQueryString();
 
         $total_items = Item::count();
-        $items_with_sufficient_stock = InventoryStock::selectRaw('item_id, SUM(current_stock - lock_stock) as available')
+
+        // Calculate dynamic low stock count based on selected warehouse
+        $items_with_sufficient_stock_query = InventoryStock::selectRaw('item_id, SUM(current_stock - lock_stock) as available');
+        if ($warehouse_id) {
+            $items_with_sufficient_stock_query->where('warehouse_id', $warehouse_id);
+        }
+        $items_with_sufficient_stock = $items_with_sufficient_stock_query
             ->groupBy('item_id')
             ->havingRaw('SUM(current_stock - lock_stock) >= 10')
             ->get()
             ->count();
         $low_stock_count = $total_items - $items_with_sufficient_stock;
 
-        return view('transactions.stock_card.index', compact('items', 'search', 'total_items', 'low_stock_count'));
+        // Get permitted warehouses for the dropdown
+        $is_superadmin = (Auth::user()->role->name ?? '') === 'Super Administrator';
+        $warehouses = $is_superadmin ? Warehouse::all() : Auth::user()->warehouses;
+
+        return view('transactions.stock_card.index', compact('items', 'search', 'total_items', 'low_stock_count', 'warehouses', 'warehouse_id'));
     }
 
-    public function printStockCard($id)
+    public function printStockCard(Request $request, $id)
     {
         $item = Item::with('unit')->findOrFail($id);
-        
-        $transactions = StockTransaction::where('item_id', $id)
-            ->with('warehouse')
-            ->latest()
-            ->get(); // Fetch all without pagination for print
-        
-        $stock_data = InventoryStock::where('item_id', $id)
+        $warehouse_id = $request->warehouse_id;
+
+        $transactions_query = StockTransaction::where('item_id', $id)->with('warehouse');
+        if ($warehouse_id) {
+            $transactions_query->where('warehouse_id', $warehouse_id);
+        }
+        $transactions = $transactions_query->latest()->get(); // Fetch all without pagination for print
+
+        $stock_query = InventoryStock::where('item_id', $id);
+        if ($warehouse_id) {
+            $stock_query->where('warehouse_id', $warehouse_id);
+        }
+        $stock_data = $stock_query
             ->selectRaw('SUM(current_stock) as current_stock, SUM(lock_stock) as lock_stock, SUM(shadow_stock) as shadow_stock')
             ->first();
             
@@ -319,6 +393,179 @@ class TransactionController extends Controller
         $shadow_stock = $stock_data->shadow_stock ?? 0;
         $available_stock = max(0, $current_stock - $lock_stock);
 
-        return view('transactions.stock_card.print', compact('item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock'));
+        $warehouse_name = 'Semua Gudang';
+        if ($warehouse_id) {
+            $warehouse = Warehouse::find($warehouse_id);
+            $warehouse_name = $warehouse ? $warehouse->name : 'Semua Gudang';
+        }
+
+        return view('transactions.stock_card.print', compact('item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock', 'warehouse_name'));
+    }
+
+    public function exportExcelSingleStockCard(Request $request, $id)
+    {
+        $item = Item::with(['unit', 'category'])->findOrFail($id);
+        $warehouse_id = $request->warehouse_id;
+
+        $transactions_query = StockTransaction::where('item_id', $id)->with('warehouse');
+        if ($warehouse_id) {
+            $transactions_query->where('warehouse_id', $warehouse_id);
+        }
+        $transactions = $transactions_query->latest()->get();
+
+        $stock_query = InventoryStock::where('item_id', $id);
+        if ($warehouse_id) {
+            $stock_query->where('warehouse_id', $warehouse_id);
+        }
+        $stock_data = $stock_query
+            ->selectRaw('SUM(current_stock) as current_stock, SUM(lock_stock) as lock_stock, SUM(shadow_stock) as shadow_stock')
+            ->first();
+            
+        $current_stock = $stock_data->current_stock ?? 0;
+        $lock_stock = $stock_data->lock_stock ?? 0;
+        $shadow_stock = $stock_data->shadow_stock ?? 0;
+        $available_stock = max(0, $current_stock - $lock_stock);
+
+        $warehouse_name = 'Semua Gudang';
+        if ($warehouse_id) {
+            $warehouse = Warehouse::find($warehouse_id);
+            $warehouse_name = $warehouse ? $warehouse->name : 'Semua Gudang';
+        }
+
+        $filename = 'Laporan_Stock_Card_' . str_replace(' ', '_', $item->name) . '_' . str_replace(' ', '_', $warehouse_name) . '_' . date('Ymd_His') . '.xls';
+        
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        return view('transactions.stock_card.export_single', compact(
+            'item', 'transactions', 'current_stock', 'lock_stock', 'shadow_stock', 'available_stock', 'warehouse_name'
+        ));
+    }
+
+    public function printAllStockCards(Request $request)
+    {
+        $warehouse_id = $request->warehouse_id;
+        $search = $request->search;
+
+        $warehouse = null;
+        if ($warehouse_id) {
+            $warehouse = Warehouse::find($warehouse_id);
+        }
+
+        $subquery_current = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(current_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_lock = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(lock_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_shadow = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(shadow_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        if ($warehouse_id) {
+            $subquery_current->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_lock->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_shadow->where('inventory_stocks.warehouse_id', $warehouse_id);
+        }
+
+        $items = Item::with(['unit', 'category'])
+            ->select('items.*')
+            ->selectSub($subquery_current, 'current_stock')
+            ->selectSub($subquery_lock, 'lock_stock')
+            ->selectSub($subquery_shadow, 'shadow_stock')
+            ->when($search, function($q) use ($search) {
+                $q->where(function($inner) use ($search) {
+                    $inner->where('items.name', 'like', "%{$search}%")
+                          ->orWhere('items.code', 'like', "%{$search}%");
+                });
+            })
+            ->get();
+
+        $total_current = 0;
+        $total_lock = 0;
+        $total_shadow = 0;
+        $total_available = 0;
+
+        foreach ($items as $item) {
+            $total_current += $item->current_stock;
+            $total_lock += $item->lock_stock;
+            $total_shadow += $item->shadow_stock;
+            $total_available += max(0, $item->current_stock - $item->lock_stock);
+        }
+
+        $warehouse_name = $warehouse ? $warehouse->name : 'Semua Gudang';
+
+        return view('transactions.stock_card.print_all', compact(
+            'items', 'warehouse_name', 'total_current', 'total_lock', 'total_shadow', 'total_available'
+        ));
+    }
+
+    public function exportExcelStockCard(Request $request)
+    {
+        $warehouse_id = $request->warehouse_id;
+        $search = $request->search;
+
+        $warehouse = null;
+        if ($warehouse_id) {
+            $warehouse = Warehouse::find($warehouse_id);
+        }
+
+        $subquery_current = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(current_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_lock = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(lock_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        $subquery_shadow = \DB::table('inventory_stocks')
+            ->selectRaw('COALESCE(SUM(shadow_stock), 0)')
+            ->whereColumn('inventory_stocks.item_id', 'items.id');
+
+        if ($warehouse_id) {
+            $subquery_current->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_lock->where('inventory_stocks.warehouse_id', $warehouse_id);
+            $subquery_shadow->where('inventory_stocks.warehouse_id', $warehouse_id);
+        }
+
+        $items = Item::with(['unit', 'category'])
+            ->select('items.*')
+            ->selectSub($subquery_current, 'current_stock')
+            ->selectSub($subquery_lock, 'lock_stock')
+            ->selectSub($subquery_shadow, 'shadow_stock')
+            ->when($search, function($q) use ($search) {
+                $q->where(function($inner) use ($search) {
+                    $inner->where('items.name', 'like', "%{$search}%")
+                          ->orWhere('items.code', 'like', "%{$search}%");
+                });
+            })
+            ->get();
+
+        $total_current = 0;
+        $total_lock = 0;
+        $total_shadow = 0;
+        $total_available = 0;
+
+        foreach ($items as $item) {
+            $total_current += $item->current_stock;
+            $total_lock += $item->lock_stock;
+            $total_shadow += $item->shadow_stock;
+            $total_available += max(0, $item->current_stock - $item->lock_stock);
+        }
+
+        $warehouse_name = $warehouse ? $warehouse->name : 'Semua Gudang';
+
+        $filename = 'Laporan_Stock_Card_' . str_replace(' ', '_', $warehouse_name) . '_' . date('Ymd_His') . '.xls';
+        
+        header('Content-Type: application/vnd.ms-excel');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+
+        return view('transactions.stock_card.export_all', compact(
+            'items', 'warehouse_name', 'total_current', 'total_lock', 'total_shadow', 'total_available'
+        ));
     }
 }

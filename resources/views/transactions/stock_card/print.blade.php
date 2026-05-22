@@ -47,6 +47,7 @@
         </div>
         <div class="ref-area">
             <p>LAPORAN KARTU STOK</p>
+            <p style="margin: 2px 0 5px 0; font-size: 10px; font-weight: bold; color: #4f46e5; text-transform: uppercase; tracking-widest: 0.1em;">GUDANG: {{ $warehouse_name }}</p>
             <h2>{{ now()->format('d F Y') }}</h2>
             <p>{{ now()->format('H:i') }}</p>
         </div>
